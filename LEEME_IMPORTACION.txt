@@ -1,0 +1,24 @@
+SISTEMA ISP - PRIMERA IMPORTACION SEGURA DE CLIENTES
+
+CONTENIDO:
+- app/Console/Commands/ImportarClientesIsp.php
+- storage/app/importaciones/clientes_isp_para_importar.csv
+- storage/app/importaciones/revision_saldos_excel_isp.csv
+
+Este paquete NO modifica MySQL por si solo.
+Importa solo datos basicos: codigo, nombre, telefono y coordenadas originales en observaciones.
+NO importa saldos, pagos, historial, cortes ni crea servicios de internet.
+Los datos financieros del Excel necesitan verificacion actual antes de suspender abonados.
+
+PASO 1 (PowerShell):
+cd $HOME\Herd\sistema-isp
+Expand-Archive -Path "$HOME\Downloads\paquete_isp_clientes.zip" -DestinationPath .
+
+PASO 2 (SIMULACION, no modifica datos):
+php artisan isp:importar-clientes storage/app/importaciones/clientes_isp_para_importar.csv
+
+Si el comando reconoce 149 clientes, revisa la cantidad de registros existentes y nuevos.
+No uses --aplicar hasta revisar el resultado de simulacion y hacer una copia de seguridad de MySQL.
+
+Para aplicar despues de revisarlo:
+php artisan isp:importar-clientes storage/app/importaciones/clientes_isp_para_importar.csv --aplicar

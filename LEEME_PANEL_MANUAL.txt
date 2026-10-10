@@ -1,0 +1,34 @@
+PANEL MANUAL PARA COBRANZA ISP - LARAVEL 13 / LIVEWIRE 4
+======================================================
+Esta entrega cambia SOLAMENTE la interfaz de Mensualidades. No reemplaza
+componentes PHP, rutas, migraciones, tablas ni registros MySQL.
+
+Instalacion en PowerShell:
+1. cd "$HOME\Herd\sistema-isp"
+2. Copy-Item "resources\views\livewire\cobranza\mensualidades.blade.php" "resources\views\livewire\cobranza\mensualidades.blade.php.antes-panel-manual.bak"
+3. Expand-Archive -LiteralPath "$HOME\Downloads\isp_panel_manual_cliente.zip" -DestinationPath "$HOME\Herd\sistema-isp" -Force
+4. php artisan view:clear
+5. npm.cmd run build
+6. Abre http://127.0.0.1:8000/cobranza/mensualidades
+
+USO:
+- Busca un cliente por nombre o codigo.
+- Pulsa 'Revisar / editar' y se abre el formulario JUSTO debajo del cliente.
+- Comprueba la tarifa real, fecha de inicio y estado actual. Marca Habilitar
+  solo cuando corresponda, y guarda.
+- Ve a Cobranza para consultar deuda, pagos e historial.
+- La generacion manual para TODO el mes esta colapsada al final de la pagina.
+
+PRECAUCIONES:
+- Los 149 importes son PROPUESTAS y no estan verificados por el Excel.
+- No es necesario ni deseable aplicar de nuevo los CSV masivos si vas uno a uno.
+- El backend de mensualidades YA INSTALADO puede crear los cargos del mes
+  pendiente al entrar en /cobranza despues de habilitar un cliente. Esta
+  entrega visual NO desactiva ese comportamiento.
+- Guardar precio nuevo NO cambia automaticamente cargos ya generados.
+- Sigue existiendo una sola configuracion por cliente (etapa 1).
+- No hay cambios en cortes/MikroTik.
+
+Para revertir solo la interfaz:
+  Copy-Item "resources\views\livewire\cobranza\mensualidades.blade.php.antes-panel-manual.bak" "resources\views\livewire\cobranza\mensualidades.blade.php" -Force
+  php artisan view:clear

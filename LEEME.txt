@@ -1,0 +1,40 @@
+PARCHE: REGISTRAR PAGO Y ASIGNAR MES / DEUDA EN UN SOLO PASO
+
+Afecta a la ficha de cobranza (Vista + Livewire) y redirige los botones Pago del listado a esa ficha.
+Agrega una tabla de detalle del mes cuando un pago liquida un saldo de Excel verificado.
+NO sustituye ningun pago, cargo, tarifa o cliente registrado.
+
+ANTES DE INSTALAR:
+- Respalda MySQL actualizado (misma receta de mysqldump que usaste antes).
+- Haz copia del PHP FichaCliente.php, Gestion.php y Blade ficha-cliente.blade.php.
+- Asegurate de instalar antes los paquetes previos de Reparto de Pagos y Conciliacion del Excel.
+
+INSTALAR (PowerShell en sistema-isp):
+Expand-Archive -LiteralPath "$HOME\Downloads\isp_pago_un_paso.zip" -DestinationPath "$HOME\Herd\sistema-isp" -Force
+php artisan migrate
+php -l app\Livewire\Cobranza\FichaCliente.php
+php -l app\Livewire\Cobranza\Gestion.php
+php artisan view:clear
+npm.cmd run build
+
+FLUJO:
+- Desde el listado, Pago redirige a Ficha completa.
+- Eliges importe, fecha real, medio, categoria, mes de internet y deuda exacta.
+- Guardar inserta el recibo en isp_pagos y su destino en isp_aplicaciones_pago
+  (o en isp_repartos_periodos para un mes antiguo SIN factura).
+- Si se elige saldo Excel verificado de internet, la tabla isp_imputaciones_pagos_meses
+  registra a qué mes corresponde. No es un segundo ingreso.
+- Categoria equipo exige deuda de equipo preexistente; de otro modo se muestra aviso.
+- No permite aplicar más dinero que el pendiente ni cruzar categorias.
+- Si un recibo cubre 2 deudas o 2 categorias, de momento debe dividirse de forma explícita;
+  NO dupliques el dinero que recibiste. Los recibos existentes se mantienen.
+
+MUY IMPORTANTE: ROsmery Oblitas CU??? ya tiene 2 pagos anteriores (S/30 Internet y
+S/100 Equipo). NO repitas ni apliques el pago de S/100 a octubre por error.
+Si el equipo se cobro y su pago esta sin distribuir, primero verifica/crea la deuda de router,
+y luego se reconcilia el pago existente (no se crea otro ingreso).
+
+LIMITACIONES: este parche se construyo sobre las ultimas versiones de FichaCliente.php y
+Gestion.php facilitadas en los paquetes previos de esta conversacion; las funciones agregadas
+localmente desde entonces podrian sobrescribirse. Por eso es importante el respaldo de archivos.
+El PHP paso lint local; falta probar el flujo completo en la instalacion Laravel del usuario.

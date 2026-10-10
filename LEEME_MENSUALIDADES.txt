@@ -1,0 +1,77 @@
+MENSUALIDADES AUTOMATICAS — SISTEMA ISP — LARAVEL 13 / LIVEWIRE 4
+====================================================================
+ESTA ENTREGA NO MODIFICA la tabla clientes, pagos, deuda del Excel ni lo ya emitido.
+Es una configuracion por CLIENTE (maximo una mensualidad por cliente, etapa 1).
+NO activa tarifas automaticamente desde los movimientos de pago del Excel.
+NO toca MikroTik. NO suspende conexiones.
+
+1. Respaldar MySQL sistema_isp con mysqldump, como ya se hizo antes.
+2. Descomprimir este paquete dentro de la RAIZ del proyecto Laravel:
+   Expand-Archive -LiteralPath "$HOME\Downloads\isp_mensualidades_automaticas.zip" -DestinationPath "$HOME\Herd\sistema-isp" -Force
+3. cd "$HOME\Herd\sistema-isp"
+   php artisan migrate
+   php artisan route:clear
+   php artisan route:list --path=cobranza
+4. Abrir http://127.0.0.1:8000/cobranza/mensualidades
+5. Configurar tarifa mensual real y fecha de inicio para uno o varios clientes.
+   Debes marcar "Habilitar facturacion" para que tenga cargos automaticos.
+   La fecha 2026-10-01 produce octubre COMPLETO; si la fecha es 10/10,
+   octubre se prorratea desde el 10 y el primer vencimiento es el 14/10.
+   Si el cliente estaba inactivo o dado de baja, NO lo habilites.
+6. Pulsa "Simular (sin guardar)". Si los montos y clientes son correctos,
+   "Generar mes". Solo entonces crea cargos, nunca duplica el mismo mes.
+   DESPUES de la primera generacion manual, al abrir /cobranza desde el dia 1, se
+   generan automaticamente cargos PENDIENTES del MES ACTUAL de clientes habilitados.
+   Si cobras S/ 60 y no pagan antes del 6, aparece como vencido.
+   La primera generacion SIEMPRE es manual para que compruebes la simulacion.
+   Si pagaron anticipado, el credito se aplica al cargo automatico.
+
+PARA CONFIGURAR 149 CLIENTES EN BLOQUE (OPCIONAL)
+------------------------------------------------
+Abre el CSV storage/app/importaciones/plantilla_mensualidades_octubre_2026.csv en Excel.
+El CSV incluye 149 clientes y 7 tarifas SUGERIDAS NO CONFIRMADAS; NO son confiables para facturar.
+COMPLETA la columna "tarifa_confirmada" con mensualidad REAL (soles); no toques codigo.
+Cambia "activar_cobro" a "SI" SOLO en clientes comprobados, en funcionamiento o
+que deban seguir facturandose segun su contrato (NO automaticamente los que dicen CORTE).
+Para octubre completo, conserva inicio_cobro=2026-10-01; para nuevos abonados usa
+fecha de alta real y se calcula proporcional. Guarda como CSV UTF-8 delimitado por coma.
+IMPORTANTE: todas las filas marcadas NO quedan deshabilitadas; si has modificado tarifas
+individualmente en la web, reimportar el CSV antiguo SOBRESCRIBE configuraciones.
+
+Prueba sin escribir nada:
+   php artisan isp:importar-mensualidades storage/app/importaciones/plantilla_mensualidades_octubre_2026.csv
+Cuando este correcto:
+   php artisan isp:importar-mensualidades storage/app/importaciones/plantilla_mensualidades_octubre_2026.csv --aplicar
+Luego PREVISUALIZA (no escribe datos):
+   php artisan isp:generar-mensualidades --mes=2026-10
+Para generar el mes:
+   php artisan isp:generar-mensualidades --mes=2026-10 --aplicar
+
+AUTOMATICO EN WINDOWS EL DIA 1 A LAS 00:10
+----------------------------------------
+Si el servidor Laravel y Windows estan ENCENDIDOS, puedes usar Laravel Scheduler.
+Abre routes/console.php, y agrega AL FINAL (sin borrar el contenido):
+   require __DIR__.'/cobranza_isp_schedule.php';
+Luego en otro PowerShell deja activo:
+   cd "$HOME\Herd\sistema-isp"
+   php artisan schedule:work
+Este proceso debe seguir en ejecucion. Para producir cargos incluso sin terminal
+abierta, posteriormente configuraremos Programador de tareas de Windows que invoque
+php artisan schedule:run cada minuto mientras la PC este encendida.
+SI LA PC ESTA APAGADA: al abrir /cobranza por primera vez despues del dia 1,
+se crearan cargos del mes vigente pendientes, sin duplicar meses anteriores.
+No hay generacion real a las 00:10 cuando el equipo esta apagado.
+
+SEGURIDAD / LIMITACIONES
+-----------------------
+* Factura solo clientes con tarifa confirmada Y casilla habilitada.
+* Cuotas del Excel hasta septiembre siguen como REFERENCIAS NO CONFIRMADAS.
+  NO se suman solas ni cuentan como deuda real hasta su revision.
+* Los cargos manuales de octubre NO quedan vinculados al mecanismo mensual;
+  revisalos antes de generar para no cobrar doble el mismo servicio/periodo.
+* Esta etapa admite UNA mensualidad por cliente. Clientes con dos servicios
+  deben manejarse mas adelante por servicio. No actives doble cuenta para un mismo contrato.
+* Cambiar la tarifa no cambia los cargos YA EMITIDOS, pero aun no mantiene un historial
+  detallado de cambios de tarifa en esta pantalla. Se agregara antes de ampliar a servicios.
+* La generacion mensual automatica no hace cortes, ni requiere MikroTik.
+* Los saldos de equipos/routers no activan morosidad de internet.

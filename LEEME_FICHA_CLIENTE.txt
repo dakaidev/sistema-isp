@@ -1,0 +1,35 @@
+SISTEMA ISP - FICHA UNIFICADA DE COBRANZA
+
+Contiene archivos nuevos. No sustituye Cobranza, Mensualidades ni Historial Excel actuales.
+
+Instalacion:
+1. Hacer un respaldo de MySQL antes de registrar nuevos pagos reales.
+2. Descomprimir este ZIP dentro de $HOME\Herd\sistema-isp
+3. En routes/web.php, cerca del final y ANTES de require __DIR__.'/settings.php'; agregar UNA sola vez:
+   require __DIR__.'/cobranza_isp_ficha.php';
+4. En resources/views/livewire/cobranza/gestion.blade.php, dentro de Acciones de cada cliente, inmediatamente despues de:
+   <div class="flex flex-wrap gap-2">
+   insertar esta unica linea:
+   <a href="{{ route('cobranza.ficha', $cliente->id) }}" class="rounded-lg bg-violet-700 px-3 py-2 text-xs font-bold text-white">Ficha completa</a>
+5. Ejecutar:
+   php artisan route:clear
+   php artisan view:clear
+   php artisan route:list --path=cobranza/ficha
+   npm.cmd run build
+6. Entrar a /cobranza; buscar cliente y pulsar Ficha completa.
+
+FUNCIONES EN LA FICHA
+* Ver saldo de Excel sin verificar, saldo confirmado y credito.
+* Consultar los apuntes del Excel de 2024-2026; NO son pagos registrados en isp_pagos.
+* Consultar cargos y pagos nuevos con saldos.
+* Configurar tarifa del cliente con habilitacion opcional, conservando cargos ya emitidos.
+* Confirmar saldo antiguo solo si esta comprobado; categoria y vencimiento real obligatorios si hay saldo.
+* Registrar dinero REAL recibido; parciales y adelantos, sin mezclar internet/equipos.
+
+PRECAUCIONES
+* NO registrar otra vez los pagos ya anotados en Excel.
+* NO confirmar un saldo que se solape con un cargo ya emitido.
+* Habilitar mensualidad SI puede generar cargos futuros cuando entres a /cobranza, pues el modulo original de mensualidades ya trae ese comportamiento.
+* Aun NO hay anular/editar pagos registrados; confirma los importes antes de guardar.
+* Aun NO hay cortes Mikrotik.
+* No se ejecutan migraciones; usa tus tablas existentes.

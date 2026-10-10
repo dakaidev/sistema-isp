@@ -1,0 +1,25 @@
+PARCHE ISP - EVITAR CRUZAR PAGOS DE MESES ANTERIORES
+====================================================
+
+OBJETIVO
+- No aplicar automaticamente el pago de septiembre a octubre cuando se emite la factura.
+- Al registrar nuevos pagos/cargos, no aplicar pagos anteriores a mensualidades futuras.
+- Las etiquetas actuales (como "Credito") se revisaran luego sin sobrescribir personalizaciones de las vistas.
+
+NO CAMBIA MYSQL. NO DESHACE APLICACIONES YA EXISTENTES.
+NO RESUELVE AUN: imputar un solo pago a julio y septiembre con el descuento de agosto.
+Para esto se necesita asignar explicita y revisadamente el pago a periodos antiguos.
+
+INSTALACION
+1. Respaldar los 3 archivos PHP a modificar antes de descomprimir.
+2. Descomprimir encima de sistema-isp.
+3. php -l app/Services/Cobranza/GeneradorMensualidades.php
+   php -l app/Livewire/Cobranza/Gestion.php
+   php -l app/Livewire/Cobranza/FichaCliente.php
+   php artisan view:clear
+4. Comprobar la simulacion y los movimientos antes de hacer nuevas operaciones.
+
+PRECAUCION
+No tocar manualmente isp_pagos, isp_cargos ni isp_aplicaciones_pago sin verificar
+el pago y la aplicacion exacta. La aplicacion equivocada de Wili sigue existente
+hasta realizar una reparacion comprobada en transaccion.

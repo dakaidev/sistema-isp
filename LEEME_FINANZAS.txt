@@ -1,0 +1,32 @@
+FINANZAS MENSUALES - SISTEMA ISP
+================================
+
+1) Haz un respaldo actualizado de tu base MySQL.
+2) Descomprime este ZIP en C:\Users\Cleric\Herd\sistema-isp (carpeta principal Laravel).
+3) Ejecuta:
+     php artisan migrate
+4) Abre routes/web.php. ANTES de require __DIR__.'/settings.php'; agrega:
+     require __DIR__.'/finanzas_isp.php';
+   NO repitas si ya existe. Conserva las otras rutas.
+5) En resources/views/components/layouts/app/sidebar.blade.php, justo ANTES del foreach de
+   Instalaciones/Inventario/Reportes, agrega este item (no lo metas dentro del foreach):
+
+<flux:sidebar.item icon="chart-bar" :href="url('/finanzas')" :current="request()->is('finanzas')">
+    Finanzas
+</flux:sidebar.item>
+
+6) Comprobar:
+     php artisan route:clear
+     php artisan view:clear
+     php artisan route:list --path=finanzas
+     npm.cmd run build
+7) Visita http://127.0.0.1:8000/finanzas
+
+REGLAS IMPORTANTES
+* Ingresos: SUMA de isp_pagos.monto según fecha_pago, siempre completa, aun si se reparte a julio/septiembre.
+* Gastos: solo los que tú registres, según fecha_gasto y sin anular_at.
+* Resultado de caja: ingresos - gastos. NO equivale a ganancia contable final.
+* Excel: anotaciones historicas por mes en isp_historial_excel, mostradas en una columna de referencia.
+  NO se suman a los pagos confirmados, porque pueden estar duplicados y no tienen fecha exacta.
+* No se alteran pagos, deudas, cargos, mensualidades ni tus datos anteriores.
+* No conviertas un saldo pendiente de cliente en ingreso: solo dinero que realmente recibiste.

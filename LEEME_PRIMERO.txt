@@ -1,0 +1,53 @@
+SISTEMA ISP - REPARTO DE PAGOS POR MES + CORRECCION AUDITADA DE WILI
+===================================================================
+
+OBJETIVO
+- Conservar el pago original #1, S/96 recibido el 07/09/2026, como ingreso de septiembre.
+- Revertir SOLO la aplicacion #1 de S/70 del pago #1 al cargo #9 de octubre,
+  dejando traza de auditoria en isp_correcciones_aplicaciones.
+- Registrar S/50 para julio y S/46 para septiembre como destinos del mismo pago.
+- Registrar agosto 2026 como exonerado por acuerdo, sin editar el Excel.
+- La factura de octubre vuelve a quedar con S/70 pendientes si no tiene otro pago.
+- Desactivar las aplicaciones automaticas de pago a los cargos. Los pagos nuevos
+  se asignan explicitamente por mes desde la ficha (Ver/distribuir por meses).
+
+ANTES: respaldo actual de MySQL y de 3 archivos PHP y una vista Blade.
+El paquete REEMPLAZA estos 4 archivos existentes:
+  app/Livewire/Cobranza/FichaCliente.php
+  app/Livewire/Cobranza/Gestion.php
+  app/Services/Cobranza/GeneradorMensualidades.php
+  resources/views/livewire/cobranza/ficha-cliente.blade.php
+El resto son archivos NUEVOS.
+
+INSTALACION
+1. Hacer respaldo actual de la base.
+2. Descomprimir ZIP en la raiz $HOME\Herd\sistema-isp.
+3. Agregar UNA VEZ require __DIR__.'/cobranza_isp_periodos.php'; en routes/web.php
+   antes del require __DIR__.'/settings.php';.
+4. Ejecutar php artisan migrate (NO migrate:fresh).
+5. Ejecutar php -l para los 3 PHP existentes reemplazados.
+6. Ejecutar php artisan route:clear y php artisan view:clear.
+7. Simular: php artisan isp:reconciliar-wili-septiembre (NO modifica).
+8. SI coincide con la captura del caso y la simulacion es correcta:
+   php artisan isp:reconciliar-wili-septiembre --aplicar
+9. Abrir /cobranza/ficha/{id} desde Cobranza y usar Ver/distribuir por meses
+   en el pago existente. El historial de Excel queda intacto.
+
+SEGURIDAD
+- El comando se detiene si cliente, pago, fecha, importe, cargo o aplicación ID no coinciden.
+- No borra el pago ni el cargo: solo revierte el enlace incorrecto (aplicacion ID1),
+  despues de registrar su detalle en una tabla permanente de auditoria.
+- Toda la correccion se ejecuta en una transaccion SQL; no hay media reparacion.
+- No se aplica ninguna segunda vez: auditoria e indices UNIQUE lo impiden.
+- Una fecha de ingreso NO es la fecha de la mensualidad pagada.
+- La tabla de repartos NO crea nuevos ingresos ni cargos retroactivos.
+- No generes facturas retroactivas de meses historicos conciliados sin revisarlas.
+- En la ficha, "Pago aun sin distribuir" no es lo mismo que anticipo.
+- Para futuros ingresos, primero guardar el pago y luego usar Ver/distribuir por meses.
+
+LIMITACION DE ESTA VERSION
+- No tiene formulario de edicion/anulacion de asignaciones guardadas. Si te equivocas,
+  no registres otra vez el pago: detenerse y revisar el detalle.
+- Las exoneraciones historicas se registran documentalmente sin descuentos a
+  facturas emitidas: para esas se desarrollara ajuste a la factura.
+- Las tarifas de clientes importadas siguen siendo provisionales hasta confirmarlas.

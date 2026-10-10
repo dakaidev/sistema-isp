@@ -1,0 +1,25 @@
+SISTEMA ISP — PORTADA / DASHBOARD 1.0
+===================================
+Este paquete modifica SOLO resources/views/dashboard.blade.php.
+NO modifica rutas, login, Livewire, cobranzas, migraciones ni MySQL.
+
+Requisito: Ya funciona /dashboard con la ruta nombrada dashboard y el layout <x-layouts::app> del starter Laravel.
+Requiere que existan rutas llamadas clientes.index, servicios.index, cobranza.index y cobranza.mensualidades; las tienes si los módulos anteriores funcionan.
+
+INSTALACIÓN (PowerShell):
+1. cd $HOME\Herd\sistema-isp
+2. Copy-Item "resources\views\dashboard.blade.php" "resources\views\dashboard.blade.php.antes-isp.bak" -Force
+3. Expand-Archive -LiteralPath "$HOME\Downloads\isp_inicio_elegante.zip" -DestinationPath "$HOME\Herd\sistema-isp" -Force
+4. php artisan view:clear
+5. npm.cmd run build
+6. Abrir http://127.0.0.1:8000/dashboard (inicia sesión si se solicita).
+
+REVERTIR:
+Copy-Item "resources\views\dashboard.blade.php.antes-isp.bak" "resources\views\dashboard.blade.php" -Force
+php artisan view:clear
+
+SEGURIDAD:
+- No activa facturación, no crea cargos, no registra pagos, no cambia tarifas.
+- Las cifras de resumen se consultan en MySQL al abrir la pantalla.
+- Los saldos Excel están etiquetados como referencias por verificar.
+- En este primer paso no tocamos el sidebar ni la dirección / del sitio.

@@ -1,0 +1,25 @@
+SISTEMA ISP - FINANZAS ACUMULADAS POR MES
+
+Este parche reemplaza SOLO:
+  app/Livewire/Finanzas/Resumen.php
+  resources/views/livewire/finanzas/resumen.blade.php
+
+No añade tablas, no importa archivos de nuevo y NO escribe pagos ni modifica importes.
+
+Criterio de caja acordado:
+  ingresos anteriores = sumatoria de isp_historial_excel.importe_anotado por su periodo
+  ingresos nuevos = sumatoria de isp_pagos.monto por fecha_pago
+  ingresos totales = anteriores + nuevos
+  resultado de caja = ingresos totales - isp_gastos no anulados
+
+Los repartos de pago y los cargos NO se vuelven a sumar.
+La fuente histórica carece de día exacto: utiliza el mes indicado en la importación.
+Si un cliente/mes tiene histórico positivo y también pagos nuevos, se muestra
+un aviso de posible coincidencia para revisar; el sistema no borra nada.
+
+Para instalar: respaldo de 2 archivos PHP y Blade, descomprimir ZIP en raíz del
+proyecto, php -l app/Livewire/Finanzas/Resumen.php, php artisan view:clear,
+npm.cmd run build, recargar /finanzas con septiembre 2026.
+
+Con los datos previamente vistos, septiembre 2026 debe sumar 4,485 + 96 + 60 = 4,641 soles.
+Esto puede variar si desde entonces se registraron más pagos o gastos.

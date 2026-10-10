@@ -1,0 +1,39 @@
+SISTEMA ISP — TARIFAS PROVISIONALES (+S/10) — OCTUBRE 2026
+
+IMPORTANTE: los pagos del Excel no prueban cual es la tarifa contractual vigente.
+Se propone una base del campo PAGO MENSUAL cuando hay importe numerico,
+si no una mensualidad repetida al menos 2 veces en los ultimos 12 meses,
+y en ausencia de evidencia una base referencial S/60. Se suma S/10.
+Algunas tarifas pueden estar equivocadas: COMPROBAR ANTES DE EMITIR.
+
+PRIMER ARCHIVO (SEGURO): tarifas_provisionales_octubre_2026.csv
+- 149 clientes; importes propuestos y editables en /cobranza/mensualidades.
+- SOLO CU122 abctrans queda habilitado (S/60, ya configurado).
+- NO se habilitan cargos para el resto, ni se crean deudas al importar.
+- Estados del Excel "CORTE", "inactivo" o desconocido quedan deshabilitados.
+- Clientes CU207 (cuota 0), CU208 (por día) y otras excepciones no reciben precio inventado.
+
+SEGUNDO ARCHIVO (NO APLICAR SIN REVISAR):
+tarifas_activar_activos_tras_revision.csv
+- Activa 83 clientes que el Excel antiguo marca "activo", excluyendo CU207.
+- Es una PREPARACION, no es confirmación de actividad ni tarifas.
+- Como ya se genero octubre para abctrans, abrir /cobranza DESPUES de aplicar
+  puede emitir inmediatamente mensualidades para los otros clientes habilitados.
+- Puede generar cargos incorrectos o duplicados si ya hay cargos MANUALES de octubre.
+- Usarlo solo DESPUES de corregir los importes y estados con el dueño del ISP.
+
+INSTALACION PRIMERA ETAPA:
+1) DESCOMPRIMIR este ZIP en la raiz del proyecto Laravel, sin cambiar archivos PHP:
+   Expand-Archive -LiteralPath "$HOME\Downloads\paquete_tarifas_provisionales_isp.zip" -DestinationPath "$HOME\Herd\sistema-isp" -Force
+2) Simular (no guarda):
+   php artisan isp:importar-mensualidades storage/app/importaciones/tarifas_provisionales_octubre_2026.csv
+3) Si muestra 149 encontrados, 1 habilitada, 148 deshabilitadas, ejecutar:
+   php artisan isp:importar-mensualidades storage/app/importaciones/tarifas_provisionales_octubre_2026.csv --aplicar
+4) Abrir /cobranza/mensualidades: ya salen las tarifas propuestas.
+5) Se puede editar cualquiera con botón Configurar. Cambiar mensualidad NO
+   actualiza cargos de meses que ya hayan sido emitidos.
+
+NO usar todavia el segundo CSV de activacion ni pulsar GENERAR MES para todos
+hasta verificar precios y clientes realmente activos.
+
+Los datos corresponden al Excel original: clientesUpina (1).xlsx.

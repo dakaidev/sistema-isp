@@ -1,0 +1,16 @@
+SISTEMA ISP - HISTORIAL DE PAGOS PRIMERO
+
+Cambios: SOLO la vista resources/views/livewire/cobranza/ficha-cliente.blade.php
+- Los pagos registrados se muestran ARRIBA, agrupados por mes real de ingreso a caja.
+- Los cargos y saldos aparecen a continuacion.
+- Los apuntes originales del Excel siguen accesibles en una seccion desplegable al final.
+- No cambia, borra ni importa ningun dato de MySQL.
+- No cambia funciones PHP ni logica de conciliacion.
+
+Instalacion:
+  cd $HOME\Herd\sistema-isp
+  Copy-Item 'resources\views\livewire\cobranza\ficha-cliente.blade.php' 'resources\views\livewire\cobranza\ficha-cliente.blade.php.antes-historial.bak' -Force
+  Expand-Archive -LiteralPath '$HOME\Downloads\paquete_historial_pagos_primero_isp.zip' -DestinationPath '$HOME\Herd\sistema-isp' -Force
+  php artisan view:clear
+
+No necesitas migraciones ni 'npm run build'.

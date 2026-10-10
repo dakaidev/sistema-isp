@@ -1,0 +1,44 @@
+SISTEMA ISP - CORRECCION DE PAGO A DEUDA EXCEL VERIFICADA
+======================================================
+
+Problema corregido:
+Un pago de septiembre anotado en 'Distribuir por meses' reducia 'Pago aun sin distribuir'
+pero NO descontaba una deuda manual 'Saldo Excel verificado por el administrador'.
+
+Que cambia:
+- app/Livewire/Cobranza/DistribuirPago.php (reemplaza)
+- resources/views/livewire/cobranza/distribuir-pago.blade.php (reemplaza)
+- app/Livewire/Cobranza/FichaCliente.php (reemplaza, muestra pago conciliado)
+- resources/views/livewire/cobranza/ficha-cliente.blade.php (reemplaza, muestra mes conciliado)
+- database/migrations/2026_10_10_235000_create_isp_auditoria_conciliaciones_repartos.php (nueva tabla de auditoria)
+NO borra pagos ni cargos, NO cambia historial Excel ni datos de otros clientes.
+
+Pasos:
+1. Respaldar MySQL (mysqldump) y los cuatro archivos que reemplaza.
+2. Expand-Archive ... -DestinationPath "$HOME\Herd\sistema-isp" -Force
+3. php artisan migrate
+4. php -l app/Livewire/Cobranza/DistribuirPago.php
+5. php artisan view:clear
+6. Desde Cobranza buscar a Rebeca -> Ficha completa -> Ver / distribuir por meses
+   en el pago existente S/60 de septiembre.
+7. Aparecera una tarjeta que indica septiembre S/60 'reparto informativo' y el cargo
+   'Saldo del Excel verificado por el administrador'. Si corresponde a esa deuda,
+   pulsa 'Aplicar a esta deuda verificada' y CONFIRMA una sola vez.
+8. Volver a la ficha. Septiembre debe quedar S/0 de pendiente; octubre S/70,
+   total S/70 (si no hay otros cargos). El pago S/60 conserva su fecha original.
+
+QUE NO HACE
+- No modifica automaticamente las deudas, exige confirmacion explicita.
+- No borra ninguna anotacion del Excel original.
+- No permite aplicar dinero de una mensualidad anterior a octubre por accidente.
+- No trata una asignacion historica sin factura como un descuento hasta que un
+  administrador la concilie con un saldo verificado.
+- No asigna automaticamente pagos a deudas historicas de otros meses.
+
+SEGURIDAD
+- Solo permite aplicar a cargos 'saldo_excel_verificado' del MISMO cliente/categoria.
+- Bloqueo y transaccion de MySQL. Evita sobrepasar saldo del cargo o pago recibido.
+- Registra auditoria en isp_auditoria_conciliaciones_repartos antes de sustituir
+  el reparto informativo por la aplicacion contable.
+- La misma asignacion no puede procesarse dos veces.
+- El ingreso de caja se mantiene en el mes de la FECHA del pago.
