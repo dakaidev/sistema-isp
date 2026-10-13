@@ -14,6 +14,11 @@ class FichaCliente extends Component
     public int $clienteId;
     public string $formulario = '';
 
+    /** Edicion puntual de un cargo ya emitido: no afecta ingresos. */
+    public ?int $cargoCorreccionId = null;
+    public string $cargoCorreccionMonto = '';
+    public string $cargoCorreccionMotivo = '';
+
     public string $tarifa = '';
     public string $inicioCobro = '';
     public bool $habilitado = false;
@@ -78,6 +83,92 @@ class FichaCliente extends Component
     {
         $this->formulario = '';
         $this->resetValidation();
+    }
+
+    /** Permite corregir un cargo mensual sin crear pagos ni descuentos ficticios. */
+    public function abrirCorreccionCargo(int $cargoId): void
+    {
+        $cargo = DB::table('isp_cargos')->where('id', $cargoId)
+            ->where('cliente_id', $this->clienteId)->where('categoria', 'internet')
+            ->whereIn('tipo', ['cargo_manual', 'mensualidad_automatica'])->first();
+        if (!$cargo) {
+            $this->addError('correccionCargo', 'No se encontro una mensualidad de Internet valida para corregir.');
+            return;
+        }
+        $this->resetValidation();
+        $this->formulario = '';
+        $this->cargoCorreccionId = (int) $cargo->id;
+        $this->cargoCorreccionMonto = number_format((float) $cargo->monto, 2, '.', '');
+        $this->cargoCorreccionMotivo = '';
+    }
+
+    public function cerrarCorreccionCargo(): void
+    {
+        $this->cargoCorreccionId = null;
+        $this->cargoCorreccionMonto = '';
+        $this->cargoCorreccionMotivo = '';
+        $this->resetValidation();
+    }
+
+    /** Guardar nueva cifra + razon, en la misma transaccion y con bloqueo por cliente. */
+    public function guardarCorreccionCargoAuditada(): void
+    {
+        if ($this->cargoCorreccionId === null) abort(400);
+        $datos = $this->validate([
+            'cargoCorreccionMonto' => ['required', 'numeric', 'decimal:0,2', 'between:0.01,99999999.99'],
+            'cargoCorreccionMotivo' => ['required', 'string', 'min:10', 'max:500'],
+        ], [
+            'cargoCorreccionMotivo.required' => 'Escribe por que corriges esta mensualidad.',
+            'cargoCorreccionMotivo.min' => 'Escribe un motivo de al menos 10 caracteres.',
+        ]);
+        $cargoId = $this->cargoCorreccionId;
+        $nuevoCentavos = $this->centavos($datos['cargoCorreccionMonto']);
+        $motivo = trim($datos['cargoCorreccionMotivo']);
+        if (mb_strlen($motivo) < 10) {
+            throw ValidationException::withMessages(['cargoCorreccionMotivo' => 'Explica el motivo con al menos 10 caracteres.']);
+        }
+        [$antes, $despues] = DB::transaction(function () use ($cargoId, $nuevoCentavos, $motivo) {
+            Cliente::whereKey($this->clienteId)->lockForUpdate()->firstOrFail();
+            $cargo = DB::table('isp_cargos')->where('id', $cargoId)
+                ->where('cliente_id', $this->clienteId)->where('categoria', 'internet')
+                ->whereIn('tipo', ['cargo_manual', 'mensualidad_automatica'])
+                ->lockForUpdate()->first();
+            if (!$cargo) {
+                throw ValidationException::withMessages(['correccionCargo' => 'El cargo ya no existe o no se puede corregir.']);
+            }
+            $antes = $this->centavos($cargo->monto);
+            if ($antes === $nuevoCentavos) {
+                throw ValidationException::withMessages(['cargoCorreccionMonto' => 'El importe nuevo debe ser diferente del original.']);
+            }
+            $aplicaciones = DB::table('isp_aplicaciones_pago')->where('cargo_id', $cargoId)
+                ->lockForUpdate()->get(['monto']);
+            $pagado = 0;
+            foreach ($aplicaciones as $aplicacion) $pagado += $this->centavos($aplicacion->monto);
+            if ($nuevoCentavos < $pagado) {
+                throw ValidationException::withMessages(['cargoCorreccionMonto' =>
+                    'Este cargo tiene S/ '.number_format($pagado / 100, 2).' ya pagados. No puedes bajarlo por debajo de lo aplicado.']);
+            }
+            DB::table('isp_cargos')->where('id', $cargoId)->update([
+                'monto' => $this->dinero($nuevoCentavos),
+                'updated_at' => now(),
+            ]);
+            // Registro permanente del motivo, autor e importe anterior y nuevo.
+            DB::table('isp_ajustes_cargos')->insert([
+                'cliente_id' => $this->clienteId,
+                'cargo_id' => $cargoId,
+                'usuario_id' => Auth::id(),
+                'monto_anterior' => $this->dinero($antes),
+                'monto_nuevo' => $this->dinero($nuevoCentavos),
+                'motivo' => $motivo,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            return [$antes, $nuevoCentavos];
+        }, 3);
+        $this->cerrarCorreccionCargo();
+        session()->flash('mensaje', 'Cargo corregido: S/ '.number_format($antes / 100, 2).
+            ' a S/ '.number_format($despues / 100, 2).
+            '. Motivo guardado en el historial del cargo. No se registro ningun pago.');
     }
 
     public function guardarTarifa(): void
@@ -382,22 +473,28 @@ class FichaCliente extends Component
         foreach ($pagos as $pago) $pagado += $this->centavos($pago->monto);
         $pagosDistribuidosHistoricos = $this->centavos(DB::table('isp_repartos_periodos')
             ->where('cliente_id', $this->clienteId)->sum('monto'));
+        $anticiposSinAplicar = DB::table('isp_anticipos_internet')->where('cliente_id', $this->clienteId)
+            ->selectRaw('COALESCE(SUM(monto - monto_aplicado), 0) as saldo')->value('saldo');
         $resumen = [
             'saldo' => $saldo / 100,
             'internet' => $internet / 100,
             'equipo' => $equipo / 100,
             'vencido' => $vencido / 100,
-            'credito' => max(0, $pagado - $totalAplicado - $pagosDistribuidosHistoricos) / 100,
+            'credito' => max(0, $pagado - $totalAplicado - $pagosDistribuidosHistoricos - $this->centavos($anticiposSinAplicar)) / 100,
         ];
         $repartos = DB::table('isp_repartos_periodos')->where('cliente_id', $this->clienteId)->get()->groupBy('pago_id');
         $conciliaciones = DB::table('isp_auditoria_conciliaciones_repartos')
             ->where('cliente_id', $this->clienteId)->get()->groupBy('pago_id');
         $imputacionesDirectas = DB::table('isp_imputaciones_pagos_meses')
             ->where('cliente_id', $this->clienteId)->get()->groupBy('pago_id');
+        $anticipos = DB::table('isp_anticipos_internet')->where('cliente_id', $this->clienteId)->orderBy('periodo')->get();
         $exoneraciones = DB::table('isp_exoneraciones_periodos')->where('cliente_id', $this->clienteId)
             ->orderBy('periodo')->get();
+        $historialCorrecciones = DB::table('isp_ajustes_cargos')
+            ->where('cliente_id', $this->clienteId)
+            ->orderByDesc('id')->get()->groupBy('cargo_id');
         return view('livewire.cobranza.ficha-cliente', compact(
-            'cliente', 'ref', 'config', 'historial', 'cargosConSaldo', 'pagos', 'resumen', 'repartos', 'conciliaciones', 'exoneraciones', 'opcionesPago', 'imputacionesDirectas'
+            'cliente', 'ref', 'config', 'historial', 'cargosConSaldo', 'pagos', 'resumen', 'repartos', 'conciliaciones', 'exoneraciones', 'opcionesPago', 'imputacionesDirectas', 'historialCorrecciones', 'anticipos'
         ));
     }
 }

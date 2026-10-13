@@ -44,6 +44,4 @@ require __DIR__.'/cobranza_isp_periodos.php';
 require __DIR__.'/finanzas_isp.php';
 
 require __DIR__.'/settings.php';
-
-
-
+require __DIR__.'/cobranza_isp_anticipos.php';

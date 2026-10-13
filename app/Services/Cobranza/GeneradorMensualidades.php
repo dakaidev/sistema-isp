@@ -80,6 +80,8 @@ class GeneradorMensualidades
                         ]);
                         // No consumir pagos antiguos cuando se crea un mes nuevo.
                         // Solo una asignacion explicita puede aplicar anticipos a futuros meses.
+                        // Aplicar EXCLUSIVAMENTE dinero reservado para esta mensualidad.
+                        app(AplicadorAnticiposInternet::class)->alGenerar((int) $plan->cliente_id, (int) $idCargo, $inicio->toDateString());
                         return [true, $centavos];
                     }, 3);
                     if ($resultado[0]) {

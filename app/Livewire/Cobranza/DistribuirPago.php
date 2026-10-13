@@ -42,7 +42,9 @@ class DistribuirPago extends Component
             $centavos = $this->centavos($datos['monto']);
             $aplicadoCargo = $this->centavos(DB::table('isp_aplicaciones_pago')->where('pago_id', $pago->id)->sum('monto'));
             $aplicadoMes = $this->centavos(DB::table('isp_repartos_periodos')->where('pago_id', $pago->id)->sum('monto'));
-            $disponible = $this->centavos($pago->monto) - $aplicadoCargo - $aplicadoMes;
+            $reservado = $this->centavos(DB::table('isp_anticipos_internet')->where('pago_id', $pago->id)
+                ->selectRaw('COALESCE(SUM(monto - monto_aplicado), 0) as total')->value('total'));
+            $disponible = $this->centavos($pago->monto) - $aplicadoCargo - $aplicadoMes - $reservado;
             if ($centavos > $disponible) {
                 throw ValidationException::withMessages(['monto' => 'Solo quedan S/ '.number_format(max(0,$disponible)/100,2).' de este pago sin asignar.']);
             }
@@ -204,7 +206,9 @@ class DistribuirPago extends Component
         $conciliaciones = DB::table('isp_auditoria_conciliaciones_repartos')
             ->where('pago_id', $pago->id)->orderBy('id')->get();
         $aplicado = $this->centavos($cargos->sum('monto')) + $this->centavos($anteriores->sum('monto'));
-        $sinAsignar = max(0, $this->centavos($pago->monto) - $aplicado)/100;
+        $reservado = $this->centavos(DB::table('isp_anticipos_internet')->where('pago_id', $pago->id)
+            ->selectRaw('COALESCE(SUM(monto - monto_aplicado), 0) as total')->value('total'));
+        $sinAsignar = max(0, $this->centavos($pago->monto) - $aplicado - $reservado)/100;
         return view('livewire.cobranza.distribuir-pago', compact('pago','cargos','anteriores','exoneraciones','sinAsignar','cargosVerificados','conciliaciones'));
     }
 }

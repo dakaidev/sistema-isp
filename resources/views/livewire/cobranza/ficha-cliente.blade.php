@@ -59,7 +59,7 @@
             </div>
             <div class="flex flex-wrap gap-2">
                 <button type="button" wire:click="abrir('tarifa')" class="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-600">Editar mensualidad</button>
-                <button type="button" wire:click="abrir('pago')" class="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-600">Registrar pago nuevo</button>
+                <button type="button" wire:click="abrir('pago')" class="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-600">Registrar pago nuevo</button>\n                <a href="{{ route('cobranza.adelantos', ['cliente' => $cliente->id]) }}" class="rounded-xl border border-blue-500 px-4 py-2.5 text-sm font-bold text-blue-200 hover:bg-blue-950">Pago de varios meses / adelantado</a>
             </div>
         </div>
 
@@ -181,6 +181,7 @@
                 ->merge($todosRepartos->pluck('periodo'))
                 ->merge($exoneraciones->pluck('periodo'))
                 ->merge($imputacionesDirectas->collapse()->pluck('periodo'))
+                ->merge($anticipos->pluck('periodo'))
                 ->map(fn ($fecha) => substr((string) $fecha, 0, 7))
                 ->filter()
                 ->unique()
@@ -209,6 +210,7 @@
                         $asignacionesMes = $todosRepartos->filter(fn ($r) => substr((string) $r->periodo, 0, 7) === $mes);
                         $exoneracionesMes = $exoneraciones->filter(fn ($e) => substr((string) $e->periodo, 0, 7) === $mes);
                         $pagosAplicadosAlMes = $imputacionesDirectas->collapse()->filter(fn ($a) => substr((string)$a->periodo, 0, 7) === $mes);
+                        $anticiposDelMes = $anticipos->filter(fn ($a) => substr((string)$a->periodo, 0, 7) === $mes);
                     @endphp
                     <div wire:key="mes-historial-{{ $mes }}" class="rounded-xl border border-zinc-800 bg-zinc-950/70 px-4 py-3 text-sm">
                         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -244,6 +246,15 @@
                         @foreach ($pagosAplicadosAlMes as $a)
                             <div class="mt-2 border-t border-zinc-800 pt-2 text-xs text-sky-300">Pago #{{ $a->pago_id }} aplicado a deuda verificada: S/ {{ number_format((float)$a->monto, 2) }} <span class="text-zinc-500">(no es otro ingreso)</span></div>
                         @endforeach
+                        @foreach ($anticiposDelMes as $adelanto)
+                            <div class="mt-2 border-t border-zinc-800 pt-2 text-xs text-sky-300">
+                                Pago #{{ $adelanto->pago_id }} reservado para este mes: S/ {{ number_format((float)$adelanto->monto, 2) }}.
+                                <span class="text-zinc-400">{{ (float)$adelanto->monto_aplicado > 0 ? 'Aplicado al cargo: S/ '.number_format((float)$adelanto->monto_aplicado,2) : 'Esperando mensualidad (no es otro ingreso)' }}</span>
+                                @if ((float)$adelanto->monto_aplicado > 0 && (float)$adelanto->monto_aplicado < (float)$adelanto->monto)
+                                    <span class="text-amber-300">Queda reserva sin aplicar: S/ {{ number_format((float)$adelanto->monto - (float)$adelanto->monto_aplicado, 2) }}; revisar cambio de tarifa.</span>
+                                @endif
+                            </div>
+                        @endforeach
                         @foreach ($exoneracionesMes as $e)
                             <p class="mt-2 border-t border-zinc-800 pt-2 text-xs text-amber-300">Mes exonerado: {{ $e->motivo }}</p>
                         @endforeach
@@ -277,6 +288,41 @@
                             <span>{{ ucfirst($cargo->categoria) }} · Vence {{ $cargo->fecha_vencimiento }}</span>
                             <span class="font-bold {{ $item['pendiente'] > 0 ? 'text-amber-400' : 'text-emerald-400' }}">Pendiente S/ {{ number_format($item['pendiente'],2) }}</span>
                         </div>
+                        @if ($item['pendiente'] > 0 && in_array($cargo->tipo, ['cargo_manual', 'mensualidad_automatica'], true) && $cargo->categoria === 'internet')
+                            <button type="button" wire:click="abrirCorreccionCargo({{ $cargo->id }})"
+                                class="mt-3 rounded-lg border border-blue-500/50 px-3 py-2 text-xs font-semibold text-blue-300 hover:bg-blue-950/40">
+                                Corregir importe y motivo
+                            </button>
+                        @endif
+                        @foreach ($historialCorrecciones->get($cargo->id, collect()) as $ajuste)
+                            <div class="mt-2 border-t border-zinc-800 pt-2 text-xs text-zinc-400">
+                                Corrección {{ $ajuste->created_at }}: S/ {{ number_format((float)$ajuste->monto_anterior, 2) }} →
+                                S/ {{ number_format((float)$ajuste->monto_nuevo, 2) }}.
+                                <span class="text-zinc-300">Motivo: {{ $ajuste->motivo }}</span>
+                            </div>
+                        @endforeach
+                        @if ($cargoCorreccionId === (int) $cargo->id)
+                            <form wire:submit="guardarCorreccionCargoAuditada" class="mt-4 space-y-3 rounded-xl border border-blue-600/50 bg-zinc-900 p-3">
+                                <p class="text-xs font-semibold text-blue-200">Corregir este cargo #{{ $cargo->id }} (sin registrar un pago)</p>
+                                <p class="text-xs text-zinc-400">Importe actual: S/ {{ number_format((float)$cargo->monto, 2) }}. El cambio ajustará el saldo pendiente.</p>
+                                <label class="block text-xs font-semibold">Importe correcto (S/)
+                                    <input wire:model="cargoCorreccionMonto" type="number" min="0.01" step="0.01" required
+                                        class="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white">
+                                </label>
+                                @error('cargoCorreccionMonto') <p class="text-xs text-red-400">{{ $message }}</p> @enderror
+                                <label class="block text-xs font-semibold">Motivo obligatorio
+                                    <textarea wire:model="cargoCorreccionMotivo" required minlength="10" maxlength="500" rows="2"
+                                        placeholder="Ej.: tarifa de octubre registrada por error a S/ 70; la mensualidad acordada era S/ 60."
+                                        class="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"></textarea>
+                                </label>
+                                @error('cargoCorreccionMotivo') <p class="text-xs text-red-400">{{ $message }}</p> @enderror
+                                @error('correccionCargo') <p class="text-xs text-red-400">{{ $message }}</p> @enderror
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="submit" class="rounded-lg bg-blue-700 px-3 py-2 text-xs font-bold text-white">Guardar corrección</button>
+                                    <button type="button" wire:click="cerrarCorreccionCargo" class="rounded-lg border border-zinc-700 px-3 py-2 text-xs">Cancelar</button>
+                                </div>
+                            </form>
+                        @endif
                     </div>
                 @empty
                     <p class="rounded-xl border border-dashed border-zinc-700 p-5 text-sm text-zinc-400">No hay cargos pendientes registrados. Revisa si existen mensualidades por generar o saldos antiguos por verificar.</p>

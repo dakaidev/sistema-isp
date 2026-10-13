@@ -15,6 +15,21 @@
         </div>
     @endif
 
+    <details open class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+        <summary class="cursor-pointer text-base font-bold">Generar mensualidades del mes (opción de administración)</summary>
+        <p class="mt-3 text-sm leading-6 text-zinc-500 dark:text-zinc-400">Esta operación afecta a TODOS los clientes habilitados. Primero revisa sus tarifas y ejecuta la simulación. Los cargos que ya existen para el mismo período no se vuelven a crear.</p>
+        <div class="mt-4 flex flex-wrap items-end gap-3">
+            <div>
+                <label for="mes-manual" class="mb-1 block text-sm font-semibold">Mes a facturar</label>
+                <input id="mes-manual" type="month" wire:model="mes" class="rounded-xl border border-zinc-300 bg-white px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950" />
+            </div>
+            <button type="button" wire:click="simular" wire:loading.attr="disabled" wire:target="simular,generar" class="rounded-xl border border-blue-500 px-4 py-3 text-sm font-bold text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/30">Simular sin guardar</button>
+            <button type="button" wire:click="generar" wire:confirm="¿Confirmas generar las mensualidades para TODOS los clientes habilitados del mes elegido?" wire:loading.attr="disabled" wire:target="simular,generar" class="rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700">Confirmar y generar mes</button>
+        </div>
+        @error('mes') <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+        <p class="mt-3 text-xs text-amber-600 dark:text-amber-400">Recuerda: clientes marcados «CORTE» o «inactivos» en el Excel requieren revisión. No usamos esa etiqueta histórica como una orden de facturación o suspensión.</p>
+    </details>
+
     <section class="grid gap-3 sm:grid-cols-3" aria-label="Resumen del padrón">
         <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
             <p class="text-sm text-zinc-500 dark:text-zinc-400">Clientes en la base</p>
@@ -160,18 +175,5 @@
         </div>
     </section>
 
-    <details class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-        <summary class="cursor-pointer text-base font-bold">Generar mensualidades del mes (opción de administración)</summary>
-        <p class="mt-3 text-sm leading-6 text-zinc-500 dark:text-zinc-400">Esta operación afecta a TODOS los clientes habilitados. Primero revisa sus tarifas y ejecuta la simulación. Los cargos que ya existen para el mismo período no se vuelven a crear.</p>
-        <div class="mt-4 flex flex-wrap items-end gap-3">
-            <div>
-                <label for="mes-manual" class="mb-1 block text-sm font-semibold">Mes a facturar</label>
-                <input id="mes-manual" type="month" wire:model="mes" class="rounded-xl border border-zinc-300 bg-white px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950" />
-            </div>
-            <button type="button" wire:click="simular" wire:loading.attr="disabled" wire:target="simular,generar" class="rounded-xl border border-blue-500 px-4 py-3 text-sm font-bold text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/30">Simular sin guardar</button>
-            <button type="button" wire:click="generar" wire:confirm="¿Confirmas generar las mensualidades para TODOS los clientes habilitados del mes elegido?" wire:loading.attr="disabled" wire:target="simular,generar" class="rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700">Confirmar y generar mes</button>
-        </div>
-        @error('mes') <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
-        <p class="mt-3 text-xs text-amber-600 dark:text-amber-400">Recuerda: clientes marcados «CORTE» o «inactivos» en el Excel requieren revisión. No usamos esa etiqueta histórica como una orden de facturación o suspensión.</p>
-    </details>
+    
 </div>

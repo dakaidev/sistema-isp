@@ -1,0 +1,31 @@
+MODULO: Pago de varios meses / adelantado — Sistema ISP
+
+Este ZIP agrega archivos nuevos y un instalador que modifica SOLO cinco archivos existentes.
+No contiene clientes, contraseñas ni exportaciones MySQL.
+
+ANTES: cierra los formularios de Cobranza y realiza un respaldo reciente de MySQL.
+
+Desde PowerShell:
+  cd "$HOME\Herd\sistema-isp"
+  Expand-Archive -LiteralPath "$HOME\Downloads\isp_adelantos_multimes.zip" -DestinationPath "$HOME\Herd\sistema-isp" -Force
+  php instalar_adelantos.php
+  php artisan migrate
+  php artisan view:clear
+
+Si php instalar_adelantos.php muestra ERROR, DETENTE: el instalador no habrá modificado los archivos existentes. No ejecutes migrate hasta revisar.
+
+Entrar a Cobranza -> Ficha completa -> Pago de varios meses / adelantado.
+Indicar el importe total del dinero recibido, fecha de recepción y asignar el importe de cada mes.
+La suma de los meses debe ser EXACTAMENTE igual al total del recibo.
+El total se guarda UNA SOLA VEZ en isp_pagos.
+Las cuotas que ya tienen factura se aplican al cargo en la misma transacción.
+Las cuotas FUTURAS sin factura se reservan en isp_anticipos_internet; el generador de mensualidades las aplicará al crear el cargo del mes.
+El adelanto de otro mes jamás se utiliza automáticamente en el mes incorrecto.
+
+EJEMPLO: 200 recibido, octubre 70, noviembre 70 y diciembre 60. Diciembre quedará con 10 pendientes si su tarifa es de 70.
+
+NO repetir el pago si el registro ya existe. No usar esta pantalla para importes de equipo/router.
+
+Después de instalar y verificar un caso de prueba, ejecuta git status; las modificaciones de código se pueden subir a GitHub con commit/push cuando se confirme que funcionan. NO agregar archivos .env, SQL ni respaldos .bak.
+
+Si cambias la tarifa o deshabilitas la facturación de un mes que ya tenga anticipos, revisa las reservas de ese cliente; podrían quedar importes sin aplicar. El sistema no mueve automáticamente ese dinero a meses distintos.
