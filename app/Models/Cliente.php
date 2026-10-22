@@ -15,11 +15,24 @@ class Cliente extends Model
         'documento',
         'telefono',
         'sector',
+        'sede',
+        'latitud',
+        'longitud',
         'direccion',
+        'fecha_instalacion',
+        'fecha_baja',
         'observaciones',
     ];
 
         
+    protected function casts(): array
+    {
+        return [
+            'fecha_instalacion' => 'date',
+            'fecha_baja' => 'date',
+        ];
+    }
+
     public function servicios(): HasMany
     {
         return $this->hasMany(Servicio::class);

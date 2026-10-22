@@ -4,7 +4,7 @@
             <div>
                 <span class="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-bold tracking-wide text-blue-100">SISTEMA ISP · FINANZAS</span>
                 <h1 class="mt-4 text-3xl font-extrabold tracking-tight">Ingresos, gastos y resultado</h1>
-                <p class="mt-2 max-w-2xl text-sm leading-relaxed text-blue-100">Consulta todos tus cobros anteriores y los pagos que sigues registrando. El mes se actualiza con cada ingreso nuevo.</p>
+                <p class="mt-2 max-w-2xl text-sm leading-relaxed text-blue-100">Un solo resumen mensual de los importes registrados, recuperando los años anteriores. Los cruces sin conciliar se señalan para revisión.</p>
             </div>
             <a href="{{ route('dashboard') }}" class="rounded-xl border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/20">← Panel principal</a>
         </div>
@@ -36,11 +36,11 @@
         </div>
     </section>
 
-    <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumen del mes">
+    <section class="grid gap-3 sm:grid-cols-3" aria-label="Resumen del mes">
         <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Ingresos cobrados</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Ingresos registrados</p>
             <p class="mt-3 text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">S/ {{ number_format($ingresosMes, 2) }}</p>
-            <p class="mt-2 text-xs text-slate-500 dark:text-zinc-400">Cobros anteriores + pagos nuevos, sin contar cargos ni reparto de pagos</p>
+            <p class="mt-2 text-xs text-slate-500 dark:text-zinc-400">Historial mensual anterior y pagos fechados; coincidencias del mismo cliente/mes no se suman dos veces</p>
         </div>
         <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Gastos realizados</p>
@@ -48,16 +48,11 @@
             <p class="mt-2 text-xs text-slate-500 dark:text-zinc-400">Gastos activos registrados según fecha</p>
         </div>
         <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Resultado de caja</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Resultado mensual orientativo</p>
             <p class="mt-3 text-2xl font-extrabold {{ $resultadoMes >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400' }}">{{ $resultadoMes < 0 ? '−' : '' }}S/ {{ number_format(abs($resultadoMes), 2) }}</p>
-            <p class="mt-2 text-xs text-slate-500 dark:text-zinc-400">Ingresos menos gastos; no equivale a utilidad contable o tributaria</p>
+            <p class="mt-2 text-xs text-slate-500 dark:text-zinc-400">Ingresos registrados menos gastos; no es un cierre contable ni caja verificada</p>
         </div>
-        <div class="rounded-2xl border border-blue-300 bg-blue-50 p-5 dark:border-blue-900 dark:bg-blue-950/30">
-            <p class="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">Detalle de los ingresos</p>
-            <p class="mt-3 text-sm font-semibold text-blue-800 dark:text-blue-200">Cobros anteriores: S/ {{ number_format($cobrosAnterioresTotal, 2) }}</p>
-            <p class="mt-1 text-sm font-semibold text-blue-800 dark:text-blue-200">Cobros nuevos: S/ {{ number_format($cobrosNuevosTotal, 2) }}</p>
-            <p class="mt-2 text-xs text-blue-700 dark:text-blue-300">Ambos ya están guardados en MySQL y cuentan en los ingresos del mes.</p>
-        </div>
+
     </section>
 
     @if ($mostrarFormulario)
@@ -137,64 +132,85 @@
     <section class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 class="text-lg font-bold">Resumen por mes · {{ $anioSeleccionado }}</h2>
-            <p class="text-xs text-slate-500 dark:text-zinc-400">Ingresos reales − gastos pagados = resultado de caja</p>
+            <p class="text-xs text-slate-500 dark:text-zinc-400">Un solo ingreso por mes. Consulta otros años en el selector superior.</p>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full min-w-[900px] text-sm">
+            <table class="w-full min-w-[660px] text-sm">
                 <thead class="border-b border-slate-200 text-left text-xs uppercase text-slate-500 dark:border-zinc-700 dark:text-zinc-400">
-                    <tr><th class="p-3">Mes</th><th class="p-3 text-right">Cobros anteriores</th><th class="p-3 text-right">Cobros nuevos</th><th class="p-3 text-right">Ingresos total</th><th class="p-3 text-right">Gastos</th><th class="p-3 text-right">Resultado</th></tr>
+                    <tr><th class="p-3">Mes</th><th class="p-3 text-right">Ingresos registrados</th><th class="p-3 text-right">Gastos</th><th class="p-3 text-right">Resultado orientativo</th></tr>
                 </thead>
                 <tbody>
                     @foreach ($meses as $fila)
                         <tr class="border-b border-slate-100 {{ $fila['numero'] === sprintf('%02d', $mesSeleccionado) ? 'bg-blue-50 dark:bg-blue-950/30' : '' }} dark:border-zinc-800" wire:key="mes-finanzas-{{ $fila['numero'] }}">
                             <td class="p-3"><button wire:click="$set('mes', '{{ $fila['numero'] }}')" type="button" class="font-semibold text-blue-700 hover:underline dark:text-blue-300">{{ $fila['nombre'] }}</button></td>
-                            <td class="p-3 text-right tabular-nums text-slate-500 dark:text-zinc-400">S/ {{ number_format($fila['anteriores'], 2) }}</td>
-                            <td class="p-3 text-right tabular-nums text-slate-500 dark:text-zinc-400">S/ {{ number_format($fila['nuevos'], 2) }}</td>
-                            <td class="p-3 text-right font-semibold tabular-nums">S/ {{ number_format($fila['ingresos'], 2) }}</td>
+                            <td class="p-3 text-right font-semibold tabular-nums">
+                                S/ {{ number_format($fila['ingresos'], 2) }}
+                                @if ($fila['pendientes'] > 0)
+                                    <span class="block text-xs font-normal text-amber-600 dark:text-amber-400">{{ $fila['pendientes'] }} coincidencia(s) por revisar</span>
+                                @endif
+                            </td>
                             <td class="p-3 text-right tabular-nums">S/ {{ number_format($fila['gastos'], 2) }}</td>
                             <td class="p-3 text-right font-bold tabular-nums {{ $fila['resultado'] < 0 ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400' }}">{{ $fila['resultado'] < 0 ? '−' : '' }}S/ {{ number_format(abs($fila['resultado']), 2) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
                 <tfoot class="border-t-2 border-slate-300 text-sm font-bold dark:border-zinc-600">
-                    <tr><td class="p-3">Total {{ $anioSeleccionado }}</td><td class="p-3 text-right">S/ {{ number_format(array_sum(array_column($meses, 'anteriores')), 2) }}</td><td class="p-3 text-right">S/ {{ number_format(array_sum(array_column($meses, 'nuevos')), 2) }}</td><td class="p-3 text-right">S/ {{ number_format($ingresosAnio, 2) }}</td><td class="p-3 text-right">S/ {{ number_format($gastosAnio, 2) }}</td><td class="p-3 text-right {{ ($ingresosAnio - $gastosAnio) < 0 ? 'text-rose-500' : 'text-emerald-500' }}">{{ ($ingresosAnio-$gastosAnio) < 0 ? '−' : '' }}S/ {{ number_format(abs($ingresosAnio-$gastosAnio), 2) }}</td></tr>
+                    <tr>
+                        <td class="p-3">Total {{ $anioSeleccionado }}</td>
+                        <td class="p-3 text-right">S/ {{ number_format($ingresosAnio, 2) }}</td>
+                        <td class="p-3 text-right">S/ {{ number_format($gastosAnio, 2) }}</td>
+                        <td class="p-3 text-right {{ ($ingresosAnio - $gastosAnio) < 0 ? 'text-rose-500' : 'text-emerald-500' }}">{{ ($ingresosAnio-$gastosAnio) < 0 ? '−' : '' }}S/ {{ number_format(abs($ingresosAnio-$gastosAnio), 2) }}</td>
+                    </tr>
                 </tfoot>
             </table>
         </div>
-        <p class="mt-4 text-xs leading-relaxed text-slate-500 dark:text-zinc-400">Cobros anteriores: importes históricos ya almacenados en MySQL por mes, sin fecha exacta del día. Cobros nuevos: pagos con fecha de recepción. Cada fuente se suma una sola vez; no se vuelven a sumar distribuciones ni cargos. Los gastos se descuentan únicamente cuando los registras.</p>
-        @if (count($posiblesCoincidencias) > 0)
-            <p class="mt-3 rounded-xl border border-amber-600/50 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">Revisar posibles cobros repetidos en el mes seleccionado: {{ implode(', ', array_slice($posiblesCoincidencias, 0, 6)) }}{{ count($posiblesCoincidencias) > 6 ? ' y otros ' . (count($posiblesCoincidencias)-6) : '' }}. Aparecen tanto en cobros anteriores como en pagos nuevos; comprueba si son ingresos diferentes. No se han borrado ni excluido automáticamente.</p>
+        <p class="mt-4 text-xs leading-relaxed text-slate-500 dark:text-zinc-400">Los importes antiguos corresponden al mes anotado, no necesariamente al día exacto del cobro. Los pagos nuevos se cuentan en el mes en que se recibieron, aunque paguen servicios de meses futuros. Si el administrador confirmó que una mensualidad anterior y un adelanto son cobros distintos, ambos se suman una sola vez. Los cruces no verificados siguen señalados; el resumen es operativo, no un cierre de caja auditado.</p>
+        @if ($pendientesAnio > 0)
+            <p class="mt-2 text-sm font-semibold text-amber-700 dark:text-amber-400">{{ $pendientesAnio }} coincidencia(s) cliente/mes de este año requieren revisión para cerrar los importes exactos.</p>
         @endif
     </section>
 
     <section class="grid gap-5 xl:grid-cols-2">
         <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
-            <h2 class="mb-1 text-lg font-bold">Cobros del mes</h2>
-            <p class="mb-4 text-xs text-slate-500 dark:text-zinc-400">Incluye cobros anteriores importados por mes y pagos nuevos por fecha de ingreso. No incluye deudas pendientes.</p>
+            <h2 class="mb-1 text-lg font-bold">Detalle de ingresos del mes</h2>
+            <p class="mb-4 text-xs text-slate-500 dark:text-zinc-400">Un solo importe consolidado por cliente. La procedencia se conserva para poder cotejar el registro.</p>
             <div class="max-h-[440px] space-y-2 overflow-y-auto">
-                <p class="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Cobros nuevos · S/ {{ number_format($cobrosNuevosTotal, 2) }}</p>
-                @forelse ($pagosMes as $p)
-                    <div class="rounded-xl border border-slate-200 p-3 text-sm dark:border-zinc-700" wire:key="fin-pago-{{ $p->id }}">
+                <p class="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Total del mes · S/ {{ number_format($ingresosMes, 2) }}</p>
+                @forelse ($detallesIngreso as $d)
+                    <div class="rounded-xl border border-slate-200 p-3 text-sm dark:border-zinc-700" wire:key="fin-ingreso-{{ $d['codigo'] }}">
                         <div class="flex items-start justify-between gap-2">
-                            <div><p class="font-bold">{{ $p->nombre }} <span class="text-xs font-normal text-slate-500">{{ $p->codigo }}</span></p><p class="mt-1 text-xs text-slate-500 dark:text-zinc-400">{{ \Carbon\Carbon::parse($p->fecha_pago)->format('d/m/Y') }} · {{ ucfirst($p->medio) }} · {{ ucfirst($p->categoria) }}</p></div>
-                            <span class="shrink-0 font-bold text-emerald-600 dark:text-emerald-400">S/ {{ number_format((float)$p->monto, 2) }}</span>
+                            <div>
+                                <p class="font-bold">{{ $d['nombre'] }} <span class="text-xs font-normal text-slate-500">{{ $d['codigo'] }}</span></p>
+                                <p class="mt-1 text-xs {{ $d['procedencia'] === 'Coincidencia por revisar' ? 'font-semibold text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-zinc-400' }}">{{ $d['procedencia'] }}</p>
+                                @if ($d['procedencia'] === 'Coincidencia por revisar')
+                                    <p class="mt-1 text-xs text-slate-500 dark:text-zinc-400">Anterior S/ {{ number_format($d['anterior'], 2) }} · pago fechado S/ {{ number_format($d['pagoInternet'], 2) }}. Se usa provisionalmente el mayor.</p>
+                                @elseif (!empty($d['notaConciliacion']))
+                                    <p class="mt-1 text-xs text-slate-500 dark:text-zinc-400">{{ $d['notaConciliacion'] }}</p>
+                                @endif
+                            </div>
+                            <span class="shrink-0 font-bold text-emerald-600 dark:text-emerald-400">S/ {{ number_format($d['monto'], 2) }}</span>
                         </div>
                     </div>
                 @empty
-                    <p class="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-zinc-700">Todavía no hay cobros nuevos registrados con fecha de este mes.</p>
-                @endforelse
-                <p class="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-zinc-400">Cobros anteriores importados · S/ {{ number_format($cobrosAnterioresTotal, 2) }}</p>
-                @forelse ($cobrosAnterioresMes as $c)
-                    <div class="rounded-xl border border-slate-200 p-3 text-sm dark:border-zinc-700" wire:key="fin-historico-{{ $c->id }}">
-                        <div class="flex items-start justify-between gap-2">
-                            <div><p class="font-bold">{{ $c->nombre }} <span class="text-xs font-normal text-slate-500">{{ $c->codigo }}</span></p><p class="mt-1 text-xs text-slate-500 dark:text-zinc-400">Registrado anteriormente en {{ \Carbon\Carbon::parse($c->periodo)->locale('es')->translatedFormat('F Y') }} · sin día exacto</p></div>
-                            <span class="shrink-0 font-bold text-emerald-600 dark:text-emerald-400">S/ {{ number_format((float)$c->importe_anotado, 2) }}</span>
-                        </div>
-                    </div>
-                @empty
-                    <p class="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-zinc-700">Sin cobros anteriores importados para este mes.</p>
+                    <p class="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-zinc-700">No hay ingresos registrados para este mes.</p>
                 @endforelse
             </div>
+            <details class="mt-4 rounded-xl border border-slate-200 p-3 dark:border-zinc-700">
+                <summary class="cursor-pointer text-xs font-semibold text-blue-700 dark:text-blue-300">Ver comprobantes con fecha registrada (sin duplicar su importe)</summary>
+                <div class="mt-3 max-h-64 space-y-2 overflow-y-auto">
+                    @forelse ($pagosMes as $p)
+                        <div class="flex justify-between gap-3 border-b border-slate-100 py-2 text-xs dark:border-zinc-800" wire:key="fin-recibo-{{ $p->id }}">
+                            <div>
+                                <p class="font-semibold">{{ $p->nombre }} · {{ $p->codigo }}</p>
+                                <p class="text-slate-500 dark:text-zinc-400">{{ \Carbon\Carbon::parse($p->fecha_pago)->format('d/m/Y') }} · {{ ucfirst($p->medio) }} · {{ ucfirst($p->categoria) }}</p>
+                            </div>
+                            <span class="font-semibold">S/ {{ number_format((float) $p->monto, 2) }}</span>
+                        </div>
+                    @empty
+                        <p class="text-xs text-slate-500">Sin pagos nuevos fechados en este mes.</p>
+                    @endforelse
+                </div>
+            </details>
         </div>
 
         <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">

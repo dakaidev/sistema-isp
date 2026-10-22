@@ -41,7 +41,7 @@ class Gestion extends Component
 
     public function abrir(int $clienteId, string $accion): void
     {
-        if (!in_array($accion, ['revision', 'cargo', 'pago', 'historial'], true)) {
+        if (!in_array($accion, ['cargo', 'pago', 'historial'], true)) {
             abort(400, 'Acción no permitida.');
         }
         // Todos los pagos nuevos se registran desde la ficha, con mes y deuda elegidos en un paso.
@@ -50,17 +50,12 @@ class Gestion extends Component
             return;
         }
         $cliente = Cliente::findOrFail($clienteId);
-        $ref = DB::table('isp_referencias_excel')->where('cliente_id', $clienteId)->first();
-        if ($accion === 'revision' && (!$ref || $ref->revisado_at !== null)) {
-            $this->addError('operacion', 'No existe referencia pendiente de revisión para este cliente.');
-            return;
-        }
         $this->resetValidation();
         $this->clienteSeleccionado = $cliente->id;
         $this->nombreSeleccionado = $cliente->codigo . ' — ' . $cliente->nombre;
         $this->accion = $accion;
-        $this->importe = $accion === 'revision' ? (string) ($ref->deuda_excel ?? '0.00') : '';
-        $this->concepto = $accion === 'revision' ? 'Saldo pendiente del Excel, verificado manualmente' : '';
+        $this->importe = '';
+        $this->concepto = '';
         $this->fechaVencimiento = '';
         $this->fechaPago = today('America/Lima')->toDateString();
         $this->medio = 'efectivo';
@@ -78,50 +73,6 @@ class Gestion extends Component
         $this->medio = 'efectivo';
         $this->categoria = 'internet';
         $this->resetValidation();
-    }
-
-    // SOLO importa un saldo del Excel cuando una persona confirmó el importe.
-    public function confirmarRevision(): void
-    {
-        if ($this->accion !== 'revision' || $this->clienteSeleccionado === null) {
-            abort(400);
-        }
-        $reglas = [
-            'importe' => 'required|numeric|decimal:0,2|between:0,99999999.99',
-            'categoria' => 'required|in:internet,equipo,otros',
-        ];
-        if ($this->aCentavos($this->importe) > 0) {
-            $reglas['fechaVencimiento'] = 'required|date_format:Y-m-d';
-        }
-        $datos = $this->validate($reglas);
-        DB::transaction(function () use ($datos) {
-            $id = $this->clienteSeleccionado;
-            Cliente::whereKey($id)->lockForUpdate()->firstOrFail();
-            $ref = DB::table('isp_referencias_excel')->where('cliente_id', $id)->lockForUpdate()->first();
-            if (!$ref || $ref->revisado_at !== null) {
-                throw ValidationException::withMessages([
-                    'operacion' => 'La referencia ya fue revisada o no existe. Actualiza la página.',
-                ]);
-            }
-            if ($this->aCentavos($datos['importe']) > 0) {
-                DB::table('isp_cargos')->insert([
-                    'cliente_id' => $id,
-                    'servicio_id' => null,
-                    'tipo' => 'saldo_excel_verificado',
-                    'categoria' => $datos['categoria'],
-                    'descripcion' => 'Saldo del Excel verificado por el administrador',
-                    'monto' => $this->formatoDinero($this->aCentavos($datos['importe'])),
-                    'fecha_vencimiento' => $datos['fechaVencimiento'],
-                    'usuario_id' => Auth::id(),
-                    'created_at' => now(), 'updated_at' => now(),
-                ]);
-            }
-            DB::table('isp_referencias_excel')->where('id', $ref->id)->update([
-                'revisado_at' => now(), 'updated_at' => now(),
-            ]);
-        });
-        $this->cerrar();
-        session()->flash('mensaje', 'Referencia verificada. Se registró solo el saldo confirmado.');
     }
 
     public function guardarCargo(): void
@@ -250,7 +201,7 @@ class Gestion extends Component
         return number_format($centavos / 100, 2, '.', '');
     }
 
-    /** Únicamente cargos revisados; el saldo del Excel no genera mora por sí solo. */
+    /** Los saldos son exclusivamente los cargos vigentes y los pagos aplicados. */
     private function resumen(int $clienteId): array
     {
         $cargos = DB::table('isp_cargos')->where('cliente_id', $clienteId)->get(['id', 'monto', 'fecha_vencimiento', 'categoria']);
@@ -293,9 +244,6 @@ class Gestion extends Component
     {
         $hoy = today('America/Lima')->toDateString();
         $clientes = Cliente::query()
-            ->when($this->filtro === 'excel_pendientes', fn ($q) => $q->whereIn('id',
-                DB::table('isp_referencias_excel')->whereNull('revisado_at')
-                    ->where('deuda_excel', '>', 0)->select('cliente_id')))
             ->when($this->filtro === 'pagos', fn ($q) => $q->whereIn('id',
                 DB::table('isp_pagos')->select('cliente_id')))
             ->when($this->filtro === 'vencidos', function ($q) use ($hoy) {
@@ -318,22 +266,15 @@ class Gestion extends Component
         $informacion = [];
         foreach ($clientes as $cliente) {
             $informacion[$cliente->id] = [
-                'referencia' => DB::table('isp_referencias_excel')
-                    ->where('cliente_id', $cliente->id)->first(),
                 'resumen' => $this->resumen($cliente->id),
                 'ultimo_pago' => DB::table('isp_pagos')
                     ->where('cliente_id', $cliente->id)
                     ->orderByDesc('fecha_pago')->orderByDesc('id')->first(),
             ];
         }
-        $conteoReferencias = DB::table('isp_referencias_excel')->whereNull('revisado_at')->count();
-        $deudaExcelSinVerificar = DB::table('isp_referencias_excel')
-            ->whereNull('revisado_at')->where('deuda_excel', '>', 0)->count();
         return view('livewire.cobranza.gestion', [
             'clientes' => $clientes,
             'informacion' => $informacion,
-            'conteoReferencias' => $conteoReferencias,
-            'deudaExcelSinVerificar' => $deudaExcelSinVerificar,
             'historialPagos' => $this->accion === 'historial' && $this->clienteSeleccionado !== null
                 ? DB::table('isp_pagos')->where('cliente_id', $this->clienteSeleccionado)
                     ->orderByDesc('fecha_pago')->orderByDesc('id')->limit(40)->get()

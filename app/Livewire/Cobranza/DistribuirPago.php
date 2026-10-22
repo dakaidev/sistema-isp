@@ -89,8 +89,8 @@ class DistribuirPago extends Component
 
     /**
      * Convierte una asignacion INFORMATIVA del mes en una aplicacion contable
-     * a un saldo del Excel que el administrador ya verifico.
-     * El pago original, la fecha de caja y el historial Excel no se modifican.
+     * a una deuda anterior que el administrador ya confirmó.
+     * El pago original y la fecha de caja no se modifican.
      */
     public function conciliarReparto(int $repartoId, int $cargoId): void
     {
@@ -112,7 +112,7 @@ class DistribuirPago extends Component
                 ->where('categoria', $pago->categoria)
                 ->where('tipo', 'saldo_excel_verificado')->lockForUpdate()->first();
             if (!$cargo) {
-                throw ValidationException::withMessages(['conciliacion' => 'Solo puedes aplicar el pago a un saldo Excel previamente verificado del mismo cliente.']);
+                throw ValidationException::withMessages(['conciliacion' => 'Solo puedes aplicar el pago a una deuda anterior confirmada del mismo cliente.']);
             }
             $centavos = $this->centavos($reparto->monto);
             if ($centavos <= 0 ||
@@ -162,7 +162,7 @@ class DistribuirPago extends Component
             // el mismo S/ 60 sigue contabilizado UNA SOLA VEZ.
             DB::table('isp_repartos_periodos')->where('id', $reparto->id)->delete();
         }, 3);
-        session()->flash('mensaje', 'Pago aplicado a la deuda verificada. El ingreso original y el historial Excel siguen intactos.');
+        session()->flash('mensaje', 'Pago aplicado a la deuda anterior confirmada. El ingreso original permanece intacto.');
     }
 
     private function centavos(mixed $monto): int

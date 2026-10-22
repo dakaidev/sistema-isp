@@ -27,7 +27,6 @@
             <button type="button" wire:click="generar" wire:confirm="¿Confirmas generar las mensualidades para TODOS los clientes habilitados del mes elegido?" wire:loading.attr="disabled" wire:target="simular,generar" class="rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700">Confirmar y generar mes</button>
         </div>
         @error('mes') <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
-        <p class="mt-3 text-xs text-amber-600 dark:text-amber-400">Recuerda: clientes marcados «CORTE» o «inactivos» en el Excel requieren revisión. No usamos esa etiqueta histórica como una orden de facturación o suspensión.</p>
     </details>
 
     <section class="grid gap-3 sm:grid-cols-3" aria-label="Resumen del padrón">
@@ -55,7 +54,6 @@
             <strong>3.</strong> Corrige su mensualidad e inicio, marca <strong>Habilitar cobro</strong> solo si corresponde y guarda.
             <strong>4.</strong> Ve a <strong>Cobranza</strong> para revisar deudas o registrar pagos.
         </p>
-        <p class="mt-2 text-xs text-blue-900/70 dark:text-blue-100/70">Las tarifas importadas son propuestas: confirma cada una. El estado del Excel es histórico, no prueba de actividad actual.</p>
     </section>
 
     <section class="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900" aria-label="Directorio de abonados">
@@ -96,7 +94,6 @@
                                 @endif
                             </div>
                             <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ $c->codigo }} @if($c->telefono) · {{ $c->telefono }} @endif</p>
-                            <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Estado en Excel (antiguo): <strong class="font-semibold text-zinc-700 dark:text-zinc-200">{{ $c->estado_excel ?: 'Sin dato' }}</strong></p>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>

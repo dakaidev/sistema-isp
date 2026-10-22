@@ -14,8 +14,8 @@
         </h1>
 
         <p class="mt-2 text-sm text-blue-100">
-            Registra, consulta y organiza los clientes
-            de tu negocio de internet.
+            Un solo lugar para consultar clientes, su tarifa de facturación y los datos de la conexión.
+            Cobranza y Mensualidades siguen utilizando los mismos registros de MySQL.
         </p>
     </div>
 
@@ -47,6 +47,56 @@
             Registros almacenados en nuestra base de datos.
         </p>
     </div>
+
+    <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-2xl border border-emerald-600/30 bg-emerald-500/5 p-5 dark:bg-emerald-950/20">
+            <p class="text-sm text-zinc-500">Clientes con facturación habilitada</p>
+            <p class="mt-1 text-2xl font-bold text-emerald-700 dark:text-emerald-300">{{ $totalFacturacion }}</p>
+            <p class="mt-1 text-xs text-zinc-500">Son los que pueden recibir mensualidades automáticas; no equivale a conexiones técnicas.</p>
+        </div>
+        <div class="rounded-2xl border border-blue-600/30 bg-blue-500/5 p-5 dark:bg-blue-950/20">
+            <p class="text-sm text-zinc-500">Clientes con conexión técnica registrada</p>
+            <p class="mt-1 text-2xl font-bold text-blue-700 dark:text-blue-300">{{ $totalConexion }}</p>
+            <p class="mt-1 text-xs text-zinc-500">Un registro de conexión es opcional y no crea deudas por sí mismo.</p>
+        </div>
+    </div>
+
+    <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-2xl border border-blue-600/30 bg-blue-500/5 p-4">
+            <p class="text-sm text-zinc-500">Sede Upina</p>
+            <p class="mt-1 text-2xl font-bold text-blue-700 dark:text-blue-300">{{ $totalUpina }}</p>
+        </div>
+        <div class="rounded-2xl border border-indigo-600/30 bg-indigo-500/5 p-4">
+            <p class="text-sm text-zinc-500">Sede Calasuca</p>
+            <p class="mt-1 text-2xl font-bold text-indigo-700 dark:text-indigo-300">{{ $totalCalasuca }}</p>
+        </div>
+        <div class="rounded-2xl border border-amber-600/30 bg-amber-500/5 p-4">
+            <p class="text-sm text-zinc-500">Sin sede revisada</p>
+            <p class="mt-1 text-2xl font-bold text-amber-700 dark:text-amber-300">{{ $totalSinSede }}</p>
+            <p class="mt-1 text-xs text-zinc-500">Clientes existentes: asignar después de confirmar su ubicación.</p>
+        </div>
+    </div>
+
+    <!-- ESTADOS ADMINISTRATIVOS DE INTERNET -->
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-2xl border border-emerald-600/30 p-4 dark:bg-emerald-950/10">
+            <p class="text-sm text-zinc-500">Internet activo (registrado)</p>
+            <p class="mt-1 text-2xl font-bold text-emerald-700 dark:text-emerald-300">{{ $totalActivos }}</p>
+        </div>
+        <div class="rounded-2xl border border-amber-600/30 p-4 dark:bg-amber-950/10">
+            <p class="text-sm text-zinc-500">Internet suspendido (registrado)</p>
+            <p class="mt-1 text-2xl font-bold text-amber-700 dark:text-amber-300">{{ $totalSuspendidos }}</p>
+        </div>
+        <div class="rounded-2xl border border-zinc-500/30 p-4">
+            <p class="text-sm text-zinc-500">Baja definitiva</p>
+            <p class="mt-1 text-2xl font-bold">{{ $totalBajas }}</p>
+        </div>
+        <div class="rounded-2xl border border-blue-500/30 p-4">
+            <p class="text-sm text-zinc-500">Sin ficha tecnica</p>
+            <p class="mt-1 text-2xl font-bold">{{ $totalSinRegistro }}</p>
+        </div>
+    </div>
+    <p class="text-xs text-zinc-500">Son estados administrativos registrados en MySQL; no verifican si el servidor cortó la conexión. Facturación y estado de internet son independientes.</p>
 
     <!-- FORMULARIO -->
     <div class="overflow-hidden rounded-2xl border
@@ -179,29 +229,27 @@
                     @enderror
                 </div>
 
-                <!-- SECTOR -->
+                <!-- SEDE: en alta y edición. Los clientes antiguos pueden seguir sin asignar. -->
                 <div>
-                    <label for="sector"
-                           class="mb-2 block text-sm font-medium">
-                        Sector / Comunidad
-                    </label>
+                    <label for="sede-cliente" class="mb-2 block text-sm font-medium">Sede / servidor {{ $clienteEditandoId === null ? '*' : '' }}</label>
+                    <select id="sede-cliente" wire:model="sede" @required($clienteEditandoId === null)
+                        class="w-full rounded-xl border border-zinc-300 bg-transparent px-4 py-3 text-sm dark:border-zinc-700">
+                        <option value="">{{ $clienteEditandoId !== null ? 'Sin asignar / pendiente de verificar' : 'Seleccionar sede...' }}</option>
+                        <option value="upina">Upina — servidor de Upina</option>
+                        <option value="calasuca">Calasuca — servidor de Calasuca</option>
+                    </select>
+                    @error('sede') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
 
-                    <input id="sector"
-                           type="text"
-                           wire:model="sector"
-                           placeholder="Ej. Centro, Upiña..."
-                           class="w-full rounded-xl border
-                                  border-zinc-300 bg-transparent
-                                  px-4 py-3 text-sm
-                                  focus:border-blue-500
-                                  focus:outline-none
-                                  dark:border-zinc-700">
-
-                    @error('sector')
-                        <p class="mt-1 text-sm text-red-500">
-                            {{ $message }}
-                        </p>
-                    @enderror
+                <!-- GPS: UNA casilla visible; latitud y longitud separadas en la base de datos. -->
+                <div class="xl:col-span-2">
+                    <label for="ubicacion-gps" class="mb-2 block text-sm font-medium">Ubicación GPS (opcional)</label>
+                    <input id="ubicacion-gps" type="text" wire:model="ubicacionGps"
+                        placeholder="Ej. -13.8824429, -70.0870094"
+                        autocomplete="off"
+                        class="w-full rounded-xl border border-zinc-300 bg-transparent px-4 py-3 text-sm dark:border-zinc-700">
+                    <p class="mt-1 text-xs text-zinc-500">Pega latitud y longitud juntas, separadas por una coma, como en Google Maps. También puedes dejarlo vacío.</p>
+                    @error('ubicacionGps') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <!-- DIRECCIÓN -->
@@ -227,6 +275,26 @@
                             {{ $message }}
                         </p>
                     @enderror
+                </div>
+
+                <!-- FECHAS: HISTORICO DEL CLIENTE. Independientes del inicio de cobro. -->
+                <div class="md:col-span-2 xl:col-span-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                    <h3 class="mb-2 font-semibold">Fechas del servicio / cliente</h3>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="fecha-instalacion" class="mb-2 block text-sm font-medium">Fecha de instalación (opcional)</label>
+                            <input id="fecha-instalacion" type="date" wire:model="fechaInstalacion"
+                                class="w-full rounded-xl border border-zinc-300 bg-transparent px-4 py-3 text-sm dark:border-zinc-700" />
+                            @error('fechaInstalacion') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label for="fecha-baja" class="mb-2 block text-sm font-medium">Fecha de baja definitiva (opcional)</label>
+                            <input id="fecha-baja" type="date" wire:model="fechaBaja"
+                                class="w-full rounded-xl border border-zinc-300 bg-transparent px-4 py-3 text-sm dark:border-zinc-700" />
+                            @error('fechaBaja') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                    <p class="mt-2 text-xs text-zinc-500">Se conservan como datos históricos. Registrar una baja aquí no cancela automáticamente el cobro, ni borra pagos, deudas o servicios. Las suspensiones temporales se administran por separado.</p>
                 </div>
 
                 <!-- OBSERVACIONES -->
@@ -326,24 +394,48 @@
                 </h2>
 
                 <p class="mt-1 text-sm text-zinc-500">
-                    Consulta los clientes guardados.
+                    Consulta tarifa, estado de cobro y tipo de conexión. Pulsa «Configurar» para editar a ese cliente.
                 </p>
             </div>
 
-            <input type="search"
-                   wire:model.live.debounce.350ms="buscar"
-                   placeholder="Buscar cliente..."
-                   class="w-full rounded-xl border
-                          border-zinc-300 bg-transparent
-                          px-4 py-3 text-sm
-                          focus:border-blue-500
-                          focus:outline-none
-                          sm:max-w-xs dark:border-zinc-700">
+            <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                <div>
+                    <label class="mb-1 block text-xs text-zinc-500" for="filtro-sede">Sede</label>
+                    <select id="filtro-sede" wire:model.live="filtroSede" class="w-full rounded-xl border border-zinc-300 bg-transparent px-3 py-3 text-sm dark:border-zinc-700">
+                        <option value="todos">Todas</option><option value="upina">Upina</option><option value="calasuca">Calasuca</option><option value="sin_asignar">Sin asignar</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs text-zinc-500" for="filtro-estado">Internet</label>
+                    <select id="filtro-estado" wire:model.live="filtroEstadoConexion" class="w-full rounded-xl border border-zinc-300 bg-transparent px-3 py-3 text-sm dark:border-zinc-700">
+                        <option value="todos">Todos</option><option value="activo">Activo</option><option value="suspendido">Suspendido</option><option value="baja">Baja definitiva</option><option value="sin_registro">Sin ficha técnica</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs text-zinc-500" for="filtro-facturacion">Facturación</label>
+                    <select id="filtro-facturacion" wire:model.live="filtroFacturacion" class="w-full rounded-xl border border-zinc-300 bg-transparent px-3 py-3 text-sm dark:border-zinc-700">
+                        <option value="todos">Todas</option><option value="habilitada">Habilitada</option><option value="deshabilitada">Deshabilitada</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs text-zinc-500" for="filtro-plan">Plan técnico</label>
+                    <select id="filtro-plan" wire:model.live="filtroPlan" class="w-full rounded-xl border border-zinc-300 bg-transparent px-3 py-3 text-sm dark:border-zinc-700">
+                        <option value="todos">Todos</option><option value="inicio">Inicio · 5 Mbps</option><option value="conecta">Conecta · 8 Mbps</option><option value="avanza">Avanza · 10 Mbps</option><option value="turbo">Turbo · 20 Mbps</option><option value="sin_plan">Sin plan definido</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs text-zinc-500" for="buscar-cliente">Buscar</label>
+                    <input id="buscar-cliente" type="search" wire:model.live.debounce.350ms="buscar" placeholder="Código, nombre o celular" class="w-full rounded-xl border border-zinc-300 bg-transparent px-4 py-3 text-sm focus:border-blue-500 focus:outline-none dark:border-zinc-700">
+                </div>
+            </div>
+            <button type="button" wire:click="limpiarFiltros" class="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">Limpiar filtros</button>
 
         </div>
 
+        <p class="px-6 pb-3 text-xs text-zinc-500">Los filtros se combinan. «Facturación habilitada» no significa que el cliente esté al día; revisa deudas y pagos en Cobranza.</p>
+
         <div class="overflow-x-auto">
-            <table class="w-full min-w-[700px] text-left text-sm">
+            <table class="w-full min-w-[1320px] text-left text-sm">
 
                 <thead class="bg-zinc-100 text-zinc-600
                               dark:bg-zinc-800
@@ -352,9 +444,11 @@
                     <tr>
                         <th class="px-5 py-4">Código</th>
                         <th class="px-5 py-4">Cliente</th>
-                        <th class="px-5 py-4">Documento</th>
-                        <th class="px-5 py-4">Celular</th>
-                        <th class="px-5 py-4">Sector</th>
+                        <th class="px-5 py-4">Sede</th>
+                        <th class="px-5 py-4">Celular / Ubicación</th>
+                        <th class="px-5 py-4">Mensualidad</th>
+                        <th class="px-5 py-4">Facturación</th>
+                        <th class="px-5 py-4">Conexión / plan</th>
                         <th class="px-5 py-4">Acciones</th>
                     </tr>
 
@@ -383,19 +477,53 @@
                             <td class="px-5 py-4 font-semibold">
                                 {{ $cliente->nombre }}
                             </td>
-
                             <td class="px-5 py-4">
-                                {{ $cliente->documento ?: '-' }}
+                                @if ($cliente->sede === 'upina')
+                                    <span class="rounded-lg bg-blue-500/10 px-2 py-1 text-xs font-bold text-blue-700 dark:text-blue-300">Upina</span>
+                                @elseif ($cliente->sede === 'calasuca')
+                                    <span class="rounded-lg bg-indigo-500/10 px-2 py-1 text-xs font-bold text-indigo-700 dark:text-indigo-300">Calasuca</span>
+                                @else
+                                    <span class="text-xs font-medium text-amber-700 dark:text-amber-300">Sin asignar</span>
+                                @endif
                             </td>
 
                             <td class="px-5 py-4">
-                                {{ $cliente->telefono ?: '-' }}
+                                <div>{{ $cliente->telefono ?: 'Sin teléfono' }}</div>
+                                @if($cliente->direccion)
+                                    <div class="max-w-[190px] truncate text-xs text-zinc-500" title="{{ $cliente->direccion }}">{{ $cliente->direccion }}</div>
+                                @endif
+                                @if($cliente->latitud !== null && $cliente->longitud !== null)
+                                    <a href="{{ 'https://www.google.com/maps?q='.rawurlencode((string) $cliente->latitud.','.(string) $cliente->longitud) }}"
+                                        target="_blank" rel="noopener noreferrer" class="mt-1 inline-block text-xs font-semibold text-blue-700 underline dark:text-blue-300">Ver GPS en Maps</a>
+                                @endif
+                            </td>
+                            <td class="px-5 py-4 font-bold">
+                                {{ $cliente->tarifa_cobro !== null ? 'S/ '.number_format((float) $cliente->tarifa_cobro, 2) : 'Sin tarifa' }}
+                            </td>
+                            <td class="px-5 py-4">
+                                @if ($cliente->cobro_habilitado)
+                                    <span class="rounded-lg bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Habilitada</span>
+                                @else
+                                    <span class="rounded-lg bg-zinc-100 px-2 py-1 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">No habilitada</span>
+                                @endif
+                                <div class="mt-2 text-xs text-zinc-500">{{ $cliente->fecha_cobro ? \Carbon\Carbon::parse($cliente->fecha_cobro)->format('d/m/Y') : 'Sin inicio' }}</div>
+                            </td>
+                            <td class="px-5 py-4">
+                                @if ($cliente->fecha_baja)
+                                    <span class="rounded-lg bg-zinc-700 px-2 py-1 text-xs font-semibold text-white">Baja definitiva</span>
+                                @elseif ($cliente->servicio_tecnico_id && $cliente->estado_tecnico === 'suspendido')
+                                    <span class="rounded-lg bg-amber-500/10 px-2 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">Suspendido</span>
+                                @elseif ($cliente->servicio_tecnico_id && $cliente->estado_tecnico === 'activo')
+                                    <span class="rounded-lg bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">Activo</span>
+                                @else
+                                    <span class="text-xs text-zinc-500">Sin ficha técnica</span>
+                                @endif
+                                @if ($cliente->servicio_tecnico_id)
+                                    <div class="mt-2 text-xs text-zinc-500">{{ $cliente->tipo_tecnico === 'fibra' ? 'Fibra' : 'Inalámbrico' }}</div>
+                                    <div class="text-xs text-zinc-500">{{ $cliente->plan_tecnico ?: 'Plan sin definir' }}@if($cliente->velocidad_tecnica) · {{ $cliente->velocidad_tecnica }} Mbps @endif</div>
+                                @endif
                             </td>
 
-                            <td class="px-5 py-4">
-                                {{ $cliente->sector ?: '-' }}
-                            </td>
-                            
                             <td class="px-5 py-4">
 
                                 <button
@@ -416,6 +544,12 @@
                                 </button>
                                 
                                 
+                                @if ($perfilClienteId === (int) $cliente->id)
+                                    <button type="button" wire:click="cerrarPerfil" class="ml-2 inline-flex items-center rounded-lg bg-zinc-600 px-4 py-2 text-xs font-bold text-white hover:bg-zinc-700">Cerrar</button>
+                                @else
+                                    <button type="button" wire:click="abrirPerfil({{ $cliente->id }})" class="ml-2 inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700">Configurar</button>
+                                @endif
+
                                 <a href="{{ route('clientes.show', $cliente->id) }}"
                                 wire:navigate
                                 class="ml-2 inline-flex items-center
@@ -435,11 +569,18 @@
 
 
                         </tr>
+                        @if ($perfilClienteId === (int) $cliente->id)
+                            <tr wire:key="perfil-unificado-{{ $cliente->id }}">
+                                <td colspan="8" class="bg-zinc-50 p-4 dark:bg-zinc-950/40 sm:p-6">
+                                    @include('livewire.clientes.perfil-unificado')
+                                </td>
+                            </tr>
+                        @endif
 
                     @empty
 
                         <tr>
-                            <td colspan="6"
+                            <td colspan="8"
                                 class="px-5 py-12 text-center
                                        text-zinc-500">
 

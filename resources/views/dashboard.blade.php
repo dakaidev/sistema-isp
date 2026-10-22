@@ -1,16 +1,13 @@
 <x-layouts::app :title="'Inicio | Sistema ISP'">
     @php
-        // Estadísticas de la base real. Aquí no se confunden saldos del Excel con deudas confirmadas.
+        // Estadísticas de clientes, cargos y pagos registrados realmente en MySQL.
         $db = \Illuminate\Support\Facades\DB::class;
         $totalClientes = $db::table('clientes')->count();
         $totalServicios = $db::table('servicios')->count();
         $tarifasConfiguradas = $db::table('isp_configuracion_mensual')->count();
         $mensualidadesHabilitadas = $db::table('isp_configuracion_mensual')->where('habilitado', 1)->count();
         $mensualidadesEmitidas = $db::table('isp_mensualidades_generadas')->count();
-        $referenciasSinRevisar = $db::table('isp_referencias_excel')
-            ->where('deuda_excel', '>', 0)
-            ->whereNull('revisado_at')
-            ->count();
+        $pagosRegistrados = $db::table('isp_pagos')->count();
         $hoyPeru = \Illuminate\Support\Carbon::now('America/Lima')->locale('es')->translatedFormat('l, d \\d\\e F \\d\\e Y');
     @endphp
 
@@ -108,10 +105,10 @@
                 <h2 class="text-lg font-bold">Estado de la cobranza</h2>
                 <div class="mt-5 grid grid-cols-2 gap-3">
                     <div class="rounded-xl bg-slate-50 p-4 dark:bg-zinc-800"><p class="text-xs text-slate-500 dark:text-zinc-400">Mensualidades emitidas</p><p class="mt-2 text-2xl font-extrabold">{{ number_format($mensualidadesEmitidas) }}</p></div>
-                    <div class="rounded-xl bg-slate-50 p-4 dark:bg-zinc-800"><p class="text-xs text-slate-500 dark:text-zinc-400">Saldos del Excel por revisar</p><p class="mt-2 text-2xl font-extrabold">{{ number_format($referenciasSinRevisar) }}</p></div>
+                    <div class="rounded-xl bg-slate-50 p-4 dark:bg-zinc-800"><p class="text-xs text-slate-500 dark:text-zinc-400">Pagos registrados</p><p class="mt-2 text-2xl font-extrabold">{{ number_format($pagosRegistrados) }}</p></div>
                 </div>
                 <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-                    <span class="font-bold">Recuerda:</span> los saldos del Excel son referencias antiguas; no se consideran deuda confirmada ni autorizan cortes por sí solos.
+                    <span class="font-bold">Recuerda:</span> solo los cargos con saldo pendiente determinan deuda; los pagos se contabilizan una vez según su fecha.
                 </div>
                 <p class="mt-4 text-xs leading-relaxed text-slate-500 dark:text-zinc-400">Este panel no activa cargos ni suspende conexiones. Solo consulta y te guía a tus módulos actuales.</p>
             </div>

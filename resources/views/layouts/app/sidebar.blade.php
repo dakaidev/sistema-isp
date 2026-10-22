@@ -100,6 +100,14 @@
 
 
                     <flux:sidebar.item
+                        icon="server-stack"
+                        :href="route('nap.index')"
+                        :current="request()->routeIs('nap.*')"
+                        wire:navigate>
+                        Cajas NAP
+                    </flux:sidebar.item>
+
+                    <flux:sidebar.item
                         icon="banknotes"
                         :href="url('/cobranza')"
                         :current="request()->is('cobranza')">
@@ -113,14 +121,6 @@
                         Mensualidades
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item
-                        icon="clock"
-                        :href="url('/cobranza/historial-excel')"
-                        :current="request()->is('cobranza/historial-excel')">
-                        Historial del Excel
-                    </flux:sidebar.item>
-
-                    
                     <flux:sidebar.item
                         icon="chart-bar"
                         :href="url('/finanzas')"

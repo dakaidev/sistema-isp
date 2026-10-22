@@ -95,9 +95,8 @@ class Mensualidades extends Component
     {
         $clientes = Cliente::query()
             ->leftJoin('isp_configuracion_mensual as cfg', 'cfg.cliente_id', '=', 'clientes.id')
-            ->leftJoin('isp_referencias_excel as re', 're.cliente_id', '=', 'clientes.id')
             ->select(['clientes.id', 'clientes.codigo', 'clientes.nombre', 'clientes.telefono',
-                'cfg.tarifa_mensual', 'cfg.inicio_cobro', 'cfg.habilitado', 're.estado_excel'])
+                'cfg.tarifa_mensual', 'cfg.inicio_cobro', 'cfg.habilitado'])
             ->when($this->filtro === 'habilitados', fn ($q) => $q->where('cfg.habilitado', 1))
             ->when($this->filtro === 'sin_configurar', fn ($q) => $q->where(function ($s) {
                 $s->whereNull('cfg.habilitado')->orWhere('cfg.habilitado', 0);

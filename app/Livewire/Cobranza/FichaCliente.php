@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
-/** Ficha unificada. No reconcilia automaticamente el Excel ni crea cargos al consultar. */
+/** Ficha de pagos, cargos, adelantos e historial del sistema. */
 class FichaCliente extends Component
 {
     public int $clienteId;
@@ -52,17 +52,10 @@ class FichaCliente extends Component
 
     public function abrir(string $tipo): void
     {
-        if (!in_array($tipo, ['tarifa', 'pago', 'revision'], true)) {
+        if (!in_array($tipo, ['tarifa', 'pago'], true)) {
             abort(400);
         }
-        if ($tipo === 'revision') {
-            $ref = DB::table('isp_referencias_excel')->where('cliente_id', $this->clienteId)->first();
-            if (!$ref || $ref->revisado_at !== null) {
-                $this->addError('operacion', 'La referencia ya fue revisada o no existe.');
-                return;
-            }
-            $this->importe = (string) ($ref->deuda_excel ?? '0');
-        } elseif ($tipo === 'pago') {
+        if ($tipo === 'pago') {        } elseif ($tipo === 'pago') {
             $this->importe = '';
             $this->fechaPago = today('America/Lima')->toDateString();
             $this->mesPago = substr($this->fechaPago, 0, 7);
@@ -203,44 +196,6 @@ class FichaCliente extends Component
         session()->flash('mensaje', 'Mensualidad guardada. Los cargos anteriores no se modificaron.');
     }
 
-    public function confirmarRevision(): void
-    {
-        if ($this->formulario !== 'revision') abort(400);
-        $reglas = [
-            'importe' => ['required', 'numeric', 'decimal:0,2', 'between:0,99999999.99'],
-            'categoria' => ['required', 'in:internet,equipo,otros'],
-        ];
-        if ($this->centavos($this->importe) > 0) {
-            $reglas['fechaVencimiento'] = ['required', 'date_format:Y-m-d'];
-        }
-        $datos = $this->validate($reglas);
-        DB::transaction(function () use ($datos) {
-            Cliente::whereKey($this->clienteId)->lockForUpdate()->firstOrFail();
-            $ref = DB::table('isp_referencias_excel')
-                ->where('cliente_id', $this->clienteId)->lockForUpdate()->first();
-            if (!$ref || $ref->revisado_at !== null) {
-                throw ValidationException::withMessages(['operacion' => 'El saldo del Excel ya fue revisado. Recarga la ficha.']);
-            }
-            if ($this->centavos($datos['importe']) > 0) {
-                DB::table('isp_cargos')->insert([
-                    'cliente_id' => $this->clienteId,
-                    'servicio_id' => null,
-                    'tipo' => 'saldo_excel_verificado',
-                    'categoria' => $datos['categoria'],
-                    'descripcion' => 'Saldo del Excel verificado por el administrador',
-                    'monto' => $this->dinero($this->centavos($datos['importe'])),
-                    'fecha_vencimiento' => $datos['fechaVencimiento'],
-                    'usuario_id' => Auth::id(),
-                    'created_at' => now(), 'updated_at' => now(),
-                ]);
-            }
-            DB::table('isp_referencias_excel')->where('id', $ref->id)
-                ->update(['revisado_at' => now(), 'updated_at' => now()]);
-        });
-        $this->cerrar();
-        session()->flash('mensaje', 'Revisión registrada. No se usaron pagos de otros meses automaticamente.');
-    }
-
     public function updatedCategoria(): void
     {
         if ($this->formulario === 'pago') $this->destinoPago = '';
@@ -313,14 +268,14 @@ class FichaCliente extends Component
                 if ($existeFacturado) {
                     throw ValidationException::withMessages(['destinoPago' => 'Este mes tiene una factura. Selecciona el cargo correspondiente.']);
                 }
-                // Si hay saldo Excel pendiente, obligar a elegirlo para que la deuda baje.
+                // Si existe una deuda anterior confirmada, debe tener prioridad frente a anotaciones sin cargo.
                 $pendienteVerificado = DB::table('isp_cargos')->where('cliente_id', $this->clienteId)
                     ->where('categoria', 'internet')->where('tipo', 'saldo_excel_verificado')->get();
                 foreach ($pendienteVerificado as $item) {
                     $pendiente = $this->centavos($item->monto) - $this->centavos(DB::table('isp_aplicaciones_pago')
                         ->where('cargo_id', $item->id)->sum('monto'));
                     if ($pendiente > 0) {
-                        throw ValidationException::withMessages(['destinoPago' => 'Hay una deuda del Excel verificada pendiente. Selecciónala para descontar el pago realmente.']);
+                        throw ValidationException::withMessages(['destinoPago' => 'Hay una deuda anterior confirmada pendiente. Selecciónala para descontar este pago realmente.']);
                     }
                 }
             } else {
@@ -414,14 +369,16 @@ class FichaCliente extends Component
     public function render()
     {
         $cliente = Cliente::findOrFail($this->clienteId);
-        $ref = DB::table('isp_referencias_excel')->where('cliente_id', $this->clienteId)->first();
         $config = DB::table('isp_configuracion_mensual')->where('cliente_id', $this->clienteId)->first();
-        $historial = DB::table('isp_historial_excel')->where('cliente_id', $this->clienteId)
-            ->orderByDesc('periodo')->get();
         $cargos = DB::table('isp_cargos')->where('cliente_id', $this->clienteId)
             ->orderByDesc('fecha_vencimiento')->orderByDesc('id')->get();
         $pagos = DB::table('isp_pagos')->where('cliente_id', $this->clienteId)
             ->orderByDesc('fecha_pago')->orderByDesc('id')->get();
+        // Solo consulta: notas mensuales anteriores, SIN crear pagos ni sumar ingresos.
+        $historicoMensual = DB::table('isp_registros_mensuales_historicos')
+            ->where('cliente_id', $this->clienteId)
+            ->where('importe', '>', 0)
+            ->orderByDesc('periodo')->get();
         $aplicaciones = DB::table('isp_aplicaciones_pago')
             ->whereIn('cargo_id', $cargos->pluck('id'))->get()->groupBy('cargo_id');
         $totalAplicado = 0;
@@ -488,13 +445,28 @@ class FichaCliente extends Component
         $imputacionesDirectas = DB::table('isp_imputaciones_pagos_meses')
             ->where('cliente_id', $this->clienteId)->get()->groupBy('pago_id');
         $anticipos = DB::table('isp_anticipos_internet')->where('cliente_id', $this->clienteId)->orderBy('periodo')->get();
+        // SOLO LECTURA: pagos que ya estan aplicados a facturas mensuales reales.
+        // La fecha de ingreso sigue en isp_pagos; el mes cubierto lo indica la factura.
+        // No crea pagos, aplicaciones ni nuevas mensualidades.
+        $pagosAplicadosAFacturas = DB::table('isp_aplicaciones_pago as a')
+            ->join('isp_pagos as p', 'p.id', '=', 'a.pago_id')
+            ->join('isp_mensualidades_generadas as m', 'm.cargo_id', '=', 'a.cargo_id')
+            ->join('isp_cargos as c', 'c.id', '=', 'a.cargo_id')
+            ->where('p.cliente_id', $this->clienteId)
+            ->where('m.cliente_id', $this->clienteId)
+            ->where('c.cliente_id', $this->clienteId)
+            ->where('p.categoria', 'internet')
+            ->where('c.categoria', 'internet')
+            ->select('a.pago_id', 'a.cargo_id', 'a.monto', 'p.fecha_pago', 'm.periodo', 'c.monto as cargo_monto')
+            ->orderBy('m.periodo')
+            ->get();
         $exoneraciones = DB::table('isp_exoneraciones_periodos')->where('cliente_id', $this->clienteId)
             ->orderBy('periodo')->get();
         $historialCorrecciones = DB::table('isp_ajustes_cargos')
             ->where('cliente_id', $this->clienteId)
             ->orderByDesc('id')->get()->groupBy('cargo_id');
         return view('livewire.cobranza.ficha-cliente', compact(
-            'cliente', 'ref', 'config', 'historial', 'cargosConSaldo', 'pagos', 'resumen', 'repartos', 'conciliaciones', 'exoneraciones', 'opcionesPago', 'imputacionesDirectas', 'historialCorrecciones', 'anticipos'
+            'cliente', 'config', 'cargosConSaldo', 'pagos', 'historicoMensual', 'resumen', 'repartos', 'conciliaciones', 'exoneraciones', 'opcionesPago', 'imputacionesDirectas', 'historialCorrecciones', 'anticipos', 'pagosAplicadosAFacturas'
         ));
     }
 }

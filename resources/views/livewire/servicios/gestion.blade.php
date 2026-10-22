@@ -241,11 +241,10 @@
                 <!-- ACTIVACIÓN -->
                 <div>
                     <label class="mb-2 block text-sm font-medium">
-                        Fecha de activación *
+                        Fecha de activación (opcional)
                     </label>
 
                     <input type="date"
-                           required
                            wire:model="fecha_activacion"
                            @disabled($servicioEditandoId !== null)
                            class="w-full rounded-xl border
@@ -669,7 +668,7 @@
                             </td>
 
                             <td class="p-4">
-                                {{ $servicio->fecha_activacion->format('d/m/Y') }}
+                                {{ $servicio->fecha_activacion?->format('d/m/Y') ?? 'Sin fecha' }}
                             </td>
 
                             <td class="p-4">

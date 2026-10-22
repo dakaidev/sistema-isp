@@ -13,7 +13,7 @@
         <div class="rounded-xl bg-zinc-900 p-5"><p class="text-sm text-zinc-400">Mes de ingreso</p><p class="mt-2 text-xl font-bold">{{ \Carbon\Carbon::parse($pago->fecha_pago)->locale('es')->translatedFormat('F Y') }}</p></div>
         <div class="rounded-xl bg-zinc-900 p-5"><p class="text-sm text-zinc-400">Pendiente de asignar</p><p class="mt-2 text-2xl font-bold text-amber-400">S/ {{ number_format($sinAsignar,2) }}</p></div>
     </div>
-    <div class="rounded-xl border border-blue-500/30 bg-blue-950/20 p-4 text-sm text-blue-100">La fecha del ingreso nunca cambia. El reparto solo indica qué meses se cubrieron con ese dinero; no crea un segundo pago ni modifica el historial del Excel.</div>
+    <div class="rounded-xl border border-blue-500/30 bg-blue-950/20 p-4 text-sm text-blue-100">La fecha del ingreso nunca cambia. El reparto solo indica qué meses se cubrieron con ese dinero; no crea un segundo ingreso ni modifica los pagos ya registrados.</div>
 
     <section class="rounded-2xl bg-zinc-900 p-6">
         <h2 class="text-lg font-bold">Distribución registrada</h2>
@@ -34,7 +34,7 @@
 
     <section class="rounded-2xl border border-emerald-500/30 bg-zinc-900 p-6">
         <h2 class="text-lg font-bold">Conciliar el reparto con una deuda verificada</h2>
-        <p class="mt-2 text-sm text-zinc-300">Una anotación «septiembre S/ 60» por sí sola <strong>NO descuenta</strong> un cargo manual del Excel. Si ya comprobaste que ese pago cancela ese saldo, aplica el reparto al cargo correspondiente. Se conserva el ingreso original.</p>
+        <p class="mt-2 text-sm text-zinc-300">Una asignación de mes por sí sola <strong>NO descuenta</strong> un cargo. Si el pago corresponde a una deuda anterior confirmada, aplica el reparto a ese cargo. Se conserva el ingreso original.</p>
         @error('conciliacion') <p class="mt-3 rounded-lg border border-red-500/40 p-3 text-sm text-red-300">{{ $message }}</p> @enderror
         <div class="mt-4 space-y-3">
             @forelse ($anteriores as $fila)

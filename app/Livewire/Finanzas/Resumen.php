@@ -3,6 +3,7 @@
 namespace App\Livewire\Finanzas;
 
 use Carbon\CarbonImmutable;
+use App\Support\ResumenIngresosMensuales;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -52,8 +53,8 @@ class Resumen extends Component
         $this->fechaGasto = $hoy->toDateString();
     }
 
-    public function updatedAnio(): void { $this->resetPage(); }
-    public function updatedMes(): void { $this->resetPage(); }
+    public function updatedAnio(): void { $this->resetPage();  }
+    public function updatedMes(): void { $this->resetPage();  }
 
     public function nuevoGasto(): void
     {
@@ -143,50 +144,49 @@ class Resumen extends Component
 
     public function render()
     {
-        $anio = filter_var($this->anio, FILTER_VALIDATE_INT);
         $hoy = CarbonImmutable::now('America/Lima');
-        $anio = $anio && $anio >= 2024 && $anio <= (int)$hoy->year ? $anio : (int)$hoy->year;
+        // Obtener los anos reales del historial, los pagos y los gastos.
+        // No limitar artificialmente la consulta a 2024 o solo 2026.
+        $fechas = array_filter([
+            DB::table('isp_registros_mensuales_historicos')->min('periodo'),
+            DB::table('isp_pagos')->min('fecha_pago'),
+            DB::table('isp_gastos')->min('fecha_gasto'),
+        ]);
+        $primerAnio = $fechas ? min(array_map(static fn ($f) => (int) substr((string) $f, 0, 4), $fechas)) : (int) $hoy->year;
+        $primerAnio = max(2000, min($primerAnio, (int) $hoy->year));
+        $anios = range((int) $hoy->year, $primerAnio);
+
+        $anio = filter_var($this->anio, FILTER_VALIDATE_INT);
+        $anio = $anio && in_array($anio, $anios, true) ? $anio : (int) $hoy->year;
         $mes = filter_var($this->mes, FILTER_VALIDATE_INT);
-        $mes = $mes && $mes >= 1 && $mes <= 12 ? $mes : (int)$hoy->month;
+        $mes = $mes && $mes >= 1 && $mes <= 12 ? $mes : (int) $hoy->month;
         $desde = sprintf('%04d-%02d-01', $anio, $mes);
         $hasta = CarbonImmutable::parse($desde, 'America/Lima')->endOfMonth()->toDateString();
         $desdeAnio = sprintf('%04d-01-01', $anio);
         $hastaAnio = sprintf('%04d-12-31', $anio);
 
-        // Cobros nuevos: usar la fecha real de pago (NO cargos ni repartos entre periodos).
-        $pagosAnio = DB::table('isp_pagos')
-            ->whereBetween('fecha_pago', [$desdeAnio, $hastaAnio])
-            ->get(['fecha_pago','monto']);
+        $pagosAnio = DB::table('isp_pagos as p')
+            ->join('clientes as c', 'c.id', '=', 'p.cliente_id')
+            ->whereBetween('p.fecha_pago', [$desdeAnio, $hastaAnio])
+            ->get(['p.cliente_id', 'p.fecha_pago', 'p.monto', 'p.categoria', 'c.codigo', 'c.nombre']);
+        $historicosAnio = DB::table('isp_registros_mensuales_historicos as h')
+            ->join('clientes as c', 'c.id', '=', 'h.cliente_id')
+            ->whereBetween('h.periodo', [$desdeAnio, $hastaAnio])
+            ->get(['h.cliente_id', 'h.periodo', 'h.importe', 'c.codigo', 'c.nombre']);
+        $resumen = ResumenIngresosMensuales::calcular($pagosAnio, $historicosAnio);
+        $sumasIngreso = $resumen['sumas'];
+        $pendientes = $resumen['pendientes'];
+
         $gastosAnio = DB::table('isp_gastos')->whereNull('anulado_at')
             ->whereBetween('fecha_gasto', [$desdeAnio, $hastaAnio])
             ->get(['fecha_gasto','monto']);
-        // Cobros históricos importados una sola vez: la columna ya identifica el mes de caja.
-        // No crear pagos adicionales en isp_pagos: contar cada fuente una sola vez.
-        $excelAnio = DB::table('isp_historial_excel')
-            ->whereBetween('periodo', [$desdeAnio, $hastaAnio])
-            ->get(['periodo','importe_anotado']);
-
-        $sumasPago = array_fill(1,12,0);
-        foreach ($pagosAnio as $fila) {
-            $sumasPago[(int)substr($fila->fecha_pago,5,2)] += (int)round((float)$fila->monto * 100);
-        }
-        $sumasGasto = array_fill(1,12,0);
+        $sumasGasto = array_fill(1, 12, 0);
         foreach ($gastosAnio as $fila) {
-            $sumasGasto[(int)substr($fila->fecha_gasto,5,2)] += (int)round((float)$fila->monto * 100);
+            $mesGasto = (int) substr((string) $fila->fecha_gasto, 5, 2);
+            if ($mesGasto >= 1 && $mesGasto <= 12) {
+                $sumasGasto[$mesGasto] += (int) round((float) $fila->monto * 100);
+            }
         }
-        $sumasExcel = array_fill(1,12,0);
-        foreach ($excelAnio as $fila) {
-            $sumasExcel[(int)substr($fila->periodo,5,2)] += (int)round((float)$fila->importe_anotado * 100);
-        }
-
-        // Ingresos acumulados = anotaciones anteriores importadas + pagos posteriores en MySQL.
-        // En septiembre 2026, CU229 y CU174 figuraban con cero en el histórico,
-        // por lo que sus pagos posteriores no estaban incluidos en las anotaciones anteriores.
-        $sumasIngreso = array_fill(1, 12, 0);
-        for ($n = 1; $n <= 12; $n++) {
-            $sumasIngreso[$n] = $sumasExcel[$n] + $sumasPago[$n];
-        }
-
         $meses = [];
         for ($n = 1; $n <= 12; $n++) {
             $meses[] = [
@@ -194,64 +194,38 @@ class Resumen extends Component
                 'nombre' => ucfirst(CarbonImmutable::create($anio, $n, 1, 0, 0, 0, 'America/Lima')
                     ->locale('es')->translatedFormat('F')),
                 'ingresos' => $sumasIngreso[$n] / 100,
-                'anteriores' => $sumasExcel[$n] / 100,
-                'nuevos' => $sumasPago[$n] / 100,
+                'pendientes' => $pendientes[$n],
                 'gastos' => $sumasGasto[$n] / 100,
                 'resultado' => ($sumasIngreso[$n] - $sumasGasto[$n]) / 100,
             ];
         }
 
+        // Conserva el acceso al recibo fechado original sin sumarlo de nuevo en la vista.
         $pagosMes = DB::table('isp_pagos as p')
             ->join('clientes as c', 'c.id', '=', 'p.cliente_id')
-            ->whereBetween('p.fecha_pago',[$desde,$hasta])
+            ->whereBetween('p.fecha_pago', [$desde, $hasta])
             ->orderByDesc('p.fecha_pago')->orderByDesc('p.id')
-            ->get(['p.id','p.fecha_pago','p.monto','p.medio','p.categoria','c.codigo','c.nombre']);
-        // Listado del histórico importado. El día exacto no existía en el archivo original.
-        $cobrosAnterioresMes = DB::table('isp_historial_excel as h')
-            ->join('clientes as c', 'c.id', '=', 'h.cliente_id')
-            ->whereBetween('h.periodo', [$desde, $hasta])
-            ->where('h.importe_anotado', '>', 0)
-            ->orderBy('c.nombre')
-            ->get(['h.id', 'h.importe_anotado', 'h.periodo', 'c.codigo', 'c.nombre']);
-
-        // Avisar de posibles coincidencias: ambas fuentes tienen importe positivo para
-        // un mismo cliente/mes. No excluir silenciosamente ni dar por duplicado un abono.
-        $posiblesCoincidencias = DB::table('isp_historial_excel as h')
-            ->join('clientes as c', 'c.id', '=', 'h.cliente_id')
-            ->whereBetween('h.periodo', [$desde, $hasta])
-            ->where('h.importe_anotado', '>', 0)
-            ->whereExists(function ($consulta) use ($desde, $hasta) {
-                $consulta->selectRaw('1')
-                    ->from('isp_pagos as p')
-                    ->whereColumn('p.cliente_id', 'h.cliente_id')
-                    ->whereBetween('p.fecha_pago', [$desde, $hasta]);
-            })
-            ->orderBy('c.nombre')
-            ->pluck('c.nombre')
-            ->all();
-
-        $gastosMes = DB::table('isp_gastos')->whereBetween('fecha_gasto', [$desde,$hasta])
-            ->orderByDesc('fecha_gasto')->orderByDesc('id')
-            ->paginate(12);
+            ->get(['p.id', 'p.fecha_pago', 'p.monto', 'p.medio', 'p.categoria', 'c.codigo', 'c.nombre']);
+        $gastosMes = DB::table('isp_gastos')->whereBetween('fecha_gasto', [$desde, $hasta])
+            ->orderByDesc('fecha_gasto')->orderByDesc('id')->paginate(12);
 
         return view('livewire.finanzas.resumen', [
             'meses' => $meses,
             'anioSeleccionado' => $anio,
             'mesSeleccionado' => $mes,
             'ingresosMes' => $sumasIngreso[$mes] / 100,
-            'cobrosAnterioresTotal' => $sumasExcel[$mes] / 100,
-            'cobrosNuevosTotal' => $sumasPago[$mes] / 100,
-            'gastosMesTotal' => $sumasGasto[$mes] / 100,
-            'resultadoMes' => ($sumasIngreso[$mes] - $sumasGasto[$mes]) / 100,
             'ingresosAnio' => array_sum($sumasIngreso) / 100,
+            'gastosMesTotal' => $sumasGasto[$mes] / 100,
             'gastosAnio' => array_sum($sumasGasto) / 100,
+            'resultadoMes' => ($sumasIngreso[$mes] - $sumasGasto[$mes]) / 100,
+            'detallesIngreso' => $resumen['detalles'][$mes],
             'pagosMes' => $pagosMes,
-            'cobrosAnterioresMes' => $cobrosAnterioresMes,
-            'posiblesCoincidencias' => $posiblesCoincidencias,
+            'pendientesMes' => $pendientes[$mes],
+            'pendientesAnio' => array_sum($pendientes),
             'gastosMes' => $gastosMes,
             'categorias' => self::CATEGORIAS,
             'medios' => self::MEDIOS,
-            'anios' => range((int)$hoy->year,2024),
+            'anios' => $anios,
         ]);
     }
 }

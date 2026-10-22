@@ -37,7 +37,7 @@ class Gestion extends Component
 
     public function mount(): void
     {
-        $this->fecha_activacion = now()->toDateString();
+        $this->fecha_activacion = '';
     }
 
     
@@ -197,7 +197,7 @@ class Gestion extends Component
             (string) $servicio->tarifa_mensual;
 
         $this->fecha_activacion =
-            $servicio->fecha_activacion->format('Y-m-d');
+            $servicio->fecha_activacion?->format('Y-m-d') ?? '';
 
         $this->estado = $servicio->estado;
 
@@ -233,7 +233,7 @@ class Gestion extends Component
             'nombre_plan' => 'nullable|string|max:100',
             'velocidad_mbps' => 'nullable|integer|min:1',
             'tarifa_mensual' => 'required|numeric|min:0.01|max:99999999.99',
-            'fecha_activacion' => 'required|date',
+            'fecha_activacion' => 'nullable|date_format:Y-m-d',
             'estado' => 'required|in:activo,suspendido',
             'direccion_instalacion' => 'nullable|string',
             'ip_asignada' => 'nullable|ip',
@@ -245,7 +245,6 @@ class Gestion extends Component
             'tipo_conexion.required' => 'Selecciona el tipo de conexión.',
             'tarifa_mensual.required' => 'Ingresa la mensualidad.',
             'tarifa_mensual.numeric' => 'La mensualidad debe ser un número.',
-            'fecha_activacion.required' => 'Selecciona la fecha de activación.',
             'ip_asignada.ip' => 'Ingresa una dirección IP válida.',
         ]);
 
@@ -255,6 +254,7 @@ class Gestion extends Component
         foreach ([
             'nombre_plan',
             'velocidad_mbps',
+            'fecha_activacion',
             'direccion_instalacion',
             'ip_asignada',
             'mac_equipo',
@@ -301,8 +301,8 @@ class Gestion extends Component
                 Tarifa::create([
                     'servicio_id' => $servicio->id,
                     'monto' => $servicio->tarifa_mensual,
-                    'vigente_desde' => $servicio->fecha_activacion->toDateString(),
-                    'motivo' => 'Tarifa inicial del servicio',
+                    'vigente_desde' => $servicio->fecha_activacion?->toDateString() ?? today('America/Lima')->toDateString(),
+                    'motivo' => $servicio->fecha_activacion ? 'Tarifa inicial del servicio' : 'Alta administrativa de tarifa tecnica, sin fecha de activacion confirmada',
                     'usuario_id' => Auth::id(),
                 ]);
 
@@ -327,7 +327,7 @@ class Gestion extends Component
             'observaciones',
         ]);
 
-        $this->fecha_activacion = now()->toDateString();
+        $this->fecha_activacion = '';
 
         $this->resetPage();
 
@@ -354,7 +354,7 @@ class Gestion extends Component
             'observaciones',
         ]);
 
-        $this->fecha_activacion = now()->toDateString();
+        $this->fecha_activacion = '';
 
         $this->resetValidation();
     }

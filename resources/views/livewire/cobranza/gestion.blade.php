@@ -32,9 +32,6 @@
         </div>
     </div>
 
-    <div class="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-4 text-sm dark:text-amber-100">
-        <strong>Nota:</strong> las deudas actuales son los cargos pendientes. Los apuntes importados se conservan en el historial para consulta y no crean cobros nuevos.
-    </div>
 
     @if ($clienteSeleccionado !== null)
         <section id="panel-cobranza" class="scroll-mt-8 rounded-2xl border border-blue-500/50 bg-white p-6 shadow-sm dark:bg-zinc-900">
@@ -184,7 +181,6 @@
                 <tbody class="divide-y divide-zinc-200 dark:divide-zinc-800">
                     @forelse ($clientes as $cliente)
                         @php
-                            $r = $informacion[$cliente->id]['referencia'];
                             $balance = $informacion[$cliente->id]['resumen'];
                             $ultimoPago = $informacion[$cliente->id]['ultimo_pago'];
                         @endphp

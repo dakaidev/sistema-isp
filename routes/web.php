@@ -16,6 +16,10 @@ Route::view('/clientes', 'clientes.index')
     ->middleware(['auth', 'verified'])
     ->name('clientes.index');
 
+Route::view('/infraestructura/cajas-nap', 'nap.index')
+    ->middleware(['auth', 'verified'])
+    ->name('nap.index');
+
 Route::view('/servicios', 'servicios.index')
     ->middleware(['auth', 'verified'])
     ->name('servicios.index');
@@ -37,7 +41,6 @@ Route::get('/clientes/{cliente}', function (\App\Models\Cliente $cliente) {
 
     
 require __DIR__.'/cobranza_isp.php';
-require __DIR__.'/cobranza_isp_historial.php';
 require __DIR__.'/cobranza_isp_ficha.php';
 require __DIR__.'/cobranza_isp_periodos.php';
 

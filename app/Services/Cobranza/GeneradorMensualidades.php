@@ -6,7 +6,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
-/** Cargo por cliente y mes. Nunca facturar desde los pagos históricos del Excel. */
+/** Cargo por cliente y mes. Nunca facturar desde ingresos previos. */
 class GeneradorMensualidades
 {
     public function ejecutar(string $mes, bool $aplicar = false): array

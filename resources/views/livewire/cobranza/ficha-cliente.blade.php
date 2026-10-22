@@ -11,7 +11,7 @@
                 <a href="{{ url('/clientes/'.$cliente->id) }}" class="rounded-xl bg-white px-4 py-3 text-blue-950 hover:bg-blue-100">Ficha del cliente ↗</a>
             </div>
         </div>
-        <p class="mt-5 max-w-3xl text-sm text-blue-100">Administra la mensualidad, consulta las deudas pendientes y registra los pagos de este cliente. El historial importado se conserva para consulta.</p>
+        <p class="mt-5 max-w-3xl text-sm text-blue-100">Administra la mensualidad, consulta las deudas pendientes y registra los pagos de este cliente. El historial de pagos registrados se conserva en esta ficha.</p>
     </div>
 
     @if (session()->has('mensaje'))
@@ -44,12 +44,7 @@
         </div>
     </div>
 
-    @if (!$ref || $ref->revisado_at === null || $resumen['saldo'] === 0)
-        <div class="rounded-xl border border-amber-600/30 bg-amber-950/20 px-5 py-4 text-sm text-amber-100">
-            <strong>Importante:</strong> un saldo confirmado en S/ 0.00 no significa necesariamente que el cliente esté al día.
-            Las mensualidades que todavia no fueron generadas no están incluidas en los saldos visibles.
-        </div>
-    @endif
+
 
     <section class="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
         <div class="flex flex-wrap items-start justify-between gap-4">
@@ -107,7 +102,7 @@
                         <button type="submit" wire:loading.attr="disabled" wire:target="guardarTarifa" class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">Guardar mensualidad</button>
                     </form>
                 @elseif ($formulario === 'pago')
-                    <p class="mb-4 text-sm text-amber-200">Registra únicamente pagos nuevos comprobados. Las casillas históricas del Excel ya fueron importadas y no deben registrarse otra vez.</p>
+                    <p class="mb-4 text-sm text-amber-200">Registra únicamente dinero recibido realmente. No vuelvas a registrar un pago existente.</p>
                     <form wire:submit="guardarPago" class="space-y-4">
                         <div class="grid gap-4 sm:grid-cols-3">
                             <label class="block text-sm">Importe recibido (S/)
@@ -173,15 +168,16 @@
     </section>
 
     <div class="grid gap-5 md:grid-cols-2">
-        {{-- MISMA UBICACIÓN Y DISEÑO: HISTORIAL UNIFICADO SOLO DE LECTURA --}}
+        {{-- Historial de pagos y asignaciones conservado en MySQL --}}
         @php
             $todosRepartos = $repartos->collapse();
-            $mesesDelHistorial = $historial->pluck('periodo')
+            $mesesDelHistorial = $historicoMensual->pluck('periodo')
                 ->merge($pagos->pluck('fecha_pago'))
                 ->merge($todosRepartos->pluck('periodo'))
                 ->merge($exoneraciones->pluck('periodo'))
                 ->merge($imputacionesDirectas->collapse()->pluck('periodo'))
                 ->merge($anticipos->pluck('periodo'))
+                ->merge($pagosAplicadosAFacturas->pluck('periodo'))
                 ->map(fn ($fecha) => substr((string) $fecha, 0, 7))
                 ->filter()
                 ->unique()
@@ -192,25 +188,26 @@
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <h2 class="text-lg font-extrabold">Historial de pagos</h2>
-                    <p class="mt-1 text-sm text-zinc-400">Todos los meses: anotaciones recuperadas del Excel y pagos nuevos registrados en MySQL.</p>
+                    <p class="mt-1 text-sm text-zinc-400">Registros mensuales anteriores y pagos actuales, claramente separados.</p>
                 </div>
                 <span class="rounded-lg bg-zinc-800 px-3 py-2 text-xs text-zinc-300">{{ $mesesDelHistorial->count() }} meses</span>
             </div>
             <div class="mt-3 rounded-xl border border-blue-500/30 bg-blue-950/20 px-3 py-3 text-xs text-blue-100">
-                <span class="font-bold text-amber-300">Excel:</span> importe anotado en el archivo antiguo, sin fecha exacta.
-                <span class="font-bold text-emerald-300">Pago nuevo:</span> dinero ingresado realmente, según su fecha de cobro.
+                <span class="font-bold text-zinc-300">Registro anterior:</span> importe anotado por mes, sin fecha exacta de cobro; no es un pago nuevo.
+                <span class="font-bold text-emerald-300">Pago recibido:</span> dinero registrado con su fecha real de cobro.
                 <span class="font-bold text-sky-300">Asignado:</span> mes de servicio al que corresponde; no es otro ingreso.
             </div>
             
             <div class="mt-4 max-h-[430px] space-y-2 overflow-y-auto pr-1">
                 @forelse ($mesesDelHistorial as $mes)
                     @php
-                        $registrosExcel = $historial->filter(fn ($h) => substr((string) $h->periodo, 0, 7) === $mes);
+                        $registrosAnterioresMes = $historicoMensual->filter(fn ($h) => substr((string) $h->periodo, 0, 7) === $mes);
                         $ingresosMes = $pagos->filter(fn ($p) => substr((string) $p->fecha_pago, 0, 7) === $mes);
                         $asignacionesMes = $todosRepartos->filter(fn ($r) => substr((string) $r->periodo, 0, 7) === $mes);
                         $exoneracionesMes = $exoneraciones->filter(fn ($e) => substr((string) $e->periodo, 0, 7) === $mes);
                         $pagosAplicadosAlMes = $imputacionesDirectas->collapse()->filter(fn ($a) => substr((string)$a->periodo, 0, 7) === $mes);
                         $anticiposDelMes = $anticipos->filter(fn ($a) => substr((string)$a->periodo, 0, 7) === $mes);
+                        $facturasPagadasMes = $pagosAplicadosAFacturas->filter(fn ($a) => substr((string)$a->periodo, 0, 7) === $mes);
                     @endphp
                     <div wire:key="mes-historial-{{ $mes }}" class="rounded-xl border border-zinc-800 bg-zinc-950/70 px-4 py-3 text-sm">
                         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -219,10 +216,10 @@
                                 <span class="font-bold text-emerald-300">Ingresó S/ {{ number_format((float) $ingresosMes->sum('monto'), 2) }}</span>
                             @endif
                         </div>
-                        @foreach ($registrosExcel as $h)
+                        @foreach ($registrosAnterioresMes as $h)
                             <div class="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-800 pt-2 text-xs">
-                                <span class="text-amber-300">Excel antiguo · Celda {{ $h->celda_excel }}</span>
-                                <span class="font-semibold">S/ {{ number_format((float) $h->importe_anotado, 2) }}</span>
+                                <span class="text-zinc-300">Registro mensual anterior <span class="text-zinc-500">(sin fecha exacta; no se suma como ingreso nuevo)</span></span>
+                                <span class="font-semibold text-zinc-200">S/ {{ number_format((float) $h->importe, 2) }}</span>
                             </div>
                         @endforeach
                         @foreach ($ingresosMes as $p)
@@ -245,6 +242,34 @@
                         @endforeach
                         @foreach ($pagosAplicadosAlMes as $a)
                             <div class="mt-2 border-t border-zinc-800 pt-2 text-xs text-sky-300">Pago #{{ $a->pago_id }} aplicado a deuda verificada: S/ {{ number_format((float)$a->monto, 2) }} <span class="text-zinc-500">(no es otro ingreso)</span></div>
+                        @endforeach
+                        {{-- Aplicaciones a facturas: antes se OMITIAN del historial si no habia un reparto adicional. --}}
+                        @foreach ($facturasPagadasMes as $aplicacionFactura)
+                            @php
+                                $centavosCargo = (int) round((float) $aplicacionFactura->cargo_monto * 100);
+                                $centavosAplicados = (int) round((float) $pagosAplicadosAFacturas
+                                    ->where('cargo_id', $aplicacionFactura->cargo_id)->sum('monto') * 100);
+                                $facturaCubierta = $centavosCargo > 0 && $centavosAplicados >= $centavosCargo;
+                                $mesIngreso = substr((string) $aplicacionFactura->fecha_pago, 0, 7);
+                            @endphp
+                            <div class="mt-2 border-t border-zinc-800 pt-2 text-xs">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <span class="font-semibold text-sky-300">
+                                        {{ $facturaCubierta ? 'Mensualidad cubierta' : 'Abono a mensualidad' }}
+                                        con pago #{{ $aplicacionFactura->pago_id }}
+                                    </span>
+                                    <span class="font-bold text-sky-300">S/ {{ number_format((float) $aplicacionFactura->monto, 2) }}</span>
+                                </div>
+                                <p class="mt-1 text-zinc-400">
+                                    Dinero recibido el {{ \Carbon\Carbon::parse($aplicacionFactura->fecha_pago)->format('d/m/Y') }}.
+                                    @if ($mesIngreso !== $mes)
+                                        Adelanto aplicado a {{ \Carbon\Carbon::parse($mes.'-01')->locale('es')->translatedFormat('F Y') }}.
+                                    @endif
+                                    <span class="text-zinc-500">No es otro ingreso de este mes.</span>
+                                </p>
+                                <a href="{{ route('cobranza.distribuir-pago', $aplicacionFactura->pago_id) }}"
+                                   class="mt-1 inline-block text-blue-300 underline underline-offset-2 hover:text-blue-200">Ver pago original #{{ $aplicacionFactura->pago_id }}</a>
+                            </div>
                         @endforeach
                         @foreach ($anticiposDelMes as $adelanto)
                             <div class="mt-2 border-t border-zinc-800 pt-2 text-xs text-sky-300">
@@ -325,7 +350,7 @@
                         @endif
                     </div>
                 @empty
-                    <p class="rounded-xl border border-dashed border-zinc-700 p-5 text-sm text-zinc-400">No hay cargos pendientes registrados. Revisa si existen mensualidades por generar o saldos antiguos por verificar.</p>
+                    <p class="rounded-xl border border-dashed border-zinc-700 p-5 text-sm text-zinc-400">No hay cargos pendientes registrados. Revisa si existen mensualidades por generar.</p>
                 @endforelse
             </div>
         </section>
