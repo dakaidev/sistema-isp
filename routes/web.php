@@ -33,6 +33,7 @@ Route::get('/clientes/{cliente}', function (\App\Models\Cliente $cliente) {
 
     return view('clientes.show', [
         'cliente' => $cliente,
+        'resumenFicha' => \App\Support\ResumenFichaCliente::obtener((int) $cliente->id),
     ]);
 
 })

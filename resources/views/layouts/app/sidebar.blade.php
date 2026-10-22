@@ -42,11 +42,11 @@
 
 
 
+            {{-- Navegación agrupada por la tarea que realiza el operador. --}}
+            {{-- Únicamente cambia el menú: no altera cargos, pagos ni servicios. --}}
             <flux:sidebar.nav class="mt-4 space-y-4">
 
-                <!-- INICIO -->
                 <flux:sidebar.group heading="INICIO" class="grid">
-
                     <flux:sidebar.item
                         icon="home"
                         :href="route('dashboard')"
@@ -55,49 +55,24 @@
                         wire:navigate>
                         Panel de control
                     </flux:sidebar.item>
-
                 </flux:sidebar.group>
 
-                <!-- OPERACIONES -->
-                <flux:sidebar.group heading="OPERACIONES" class="grid">
+                <flux:sidebar.group heading="CLIENTES Y RED" class="grid">
+                    <flux:sidebar.item
+                        icon="users"
+                        :href="route('clientes.index')"
+                        :current="request()->routeIs('clientes.*')"
+                        wire:navigate>
+                        Clientes
+                    </flux:sidebar.item>
 
-                    @if(\Illuminate\Support\Facades\Route::has('clientes.index'))
-
-                        <flux:sidebar.item
-                            icon="users"
-                            :href="route('clientes.index')"
-                            :current="request()->routeIs('clientes.*')"
-                            wire:navigate>
-                            Clientes
-                        </flux:sidebar.item>
-
-                    @else
-
-                        <div class="flex items-center gap-3 rounded-xl
-                                    px-3 py-3 text-sm text-zinc-400">
-
-                            <flux:icon.users class="size-5" />
-
-                            <span>Clientes</span>
-
-                            <span class="ml-auto text-xs">Pronto</span>
-
-                        </div>
-
-                    @endif
-
-                        
                     <flux:sidebar.item
                         icon="wifi"
                         :href="route('servicios.index')"
                         :current="request()->routeIs('servicios.*')"
                         wire:navigate>
-
                         Servicios de Internet
-
                     </flux:sidebar.item>
-
-
 
                     <flux:sidebar.item
                         icon="server-stack"
@@ -106,53 +81,31 @@
                         wire:navigate>
                         Cajas NAP
                     </flux:sidebar.item>
+                </flux:sidebar.group>
 
+                <flux:sidebar.group heading="FACTURACIÓN Y COBROS" class="grid">
                     <flux:sidebar.item
                         icon="banknotes"
-                        :href="url('/cobranza')"
-                        :current="request()->is('cobranza')">
-                        Cobranza
+                        :href="route('cobranza.index')"
+                        :current="request()->routeIs('cobranza.index', 'cobranza.ficha', 'cobranza.adelantos', 'cobranza.distribuir-pago')">
+                        Cobros y deudas
                     </flux:sidebar.item>
 
                     <flux:sidebar.item
                         icon="calendar-days"
-                        :href="url('/cobranza/mensualidades')"
-                        :current="request()->is('cobranza/mensualidades')">
+                        :href="route('cobranza.mensualidades')"
+                        :current="request()->routeIs('cobranza.mensualidades')">
                         Mensualidades
                     </flux:sidebar.item>
+                </flux:sidebar.group>
 
+                <flux:sidebar.group heading="ADMINISTRACIÓN" class="grid">
                     <flux:sidebar.item
                         icon="chart-bar"
-                        :href="url('/finanzas')"
-                        :current="request()->is('finanzas')">
+                        :href="route('finanzas.index')"
+                        :current="request()->routeIs('finanzas.*')">
                         Finanzas
                     </flux:sidebar.item>
-
-
-                    @foreach ([
-                        ['nombre' => 'Instalaciones', 'icono' => 'wrench-screwdriver'],
-                        ['nombre' => 'Inventario', 'icono' => 'cube'],
-                        ['nombre' => 'Reportes', 'icono' => 'chart-bar'],
-                     ] as $modulo)
-
-
-                        <div class="flex items-center gap-3 rounded-xl
-                                    px-3 py-3 text-sm text-zinc-400">
-
-                            <flux:icon
-                                :name="$modulo['icono']"
-                                class="size-5 shrink-0" />
-
-                            <span>{{ $modulo['nombre'] }}</span>
-
-                            <span class="ml-auto text-xs">
-                                Pronto
-                            </span>
-
-                        </div>
-
-                    @endforeach
-
                 </flux:sidebar.group>
 
             </flux:sidebar.nav>
