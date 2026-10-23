@@ -87,16 +87,10 @@
                     <flux:sidebar.item
                         icon="banknotes"
                         :href="route('cobranza.index')"
-                        :current="request()->routeIs('cobranza.index', 'cobranza.ficha', 'cobranza.adelantos', 'cobranza.distribuir-pago')">
+                        :current="request()->routeIs('cobranza.index', 'cobranza.ficha', 'cobranza.adelantos', 'cobranza.distribuir-pago', 'cobranza.mensualidades')">
                         Cobros y deudas
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item
-                        icon="calendar-days"
-                        :href="route('cobranza.mensualidades')"
-                        :current="request()->routeIs('cobranza.mensualidades')">
-                        Mensualidades
-                    </flux:sidebar.item>
                 </flux:sidebar.group>
 
                 <flux:sidebar.group heading="ADMINISTRACIÓN" class="grid">

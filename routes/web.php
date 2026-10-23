@@ -25,6 +25,14 @@ Route::view('/servicios', 'servicios.index')
     ->name('servicios.index');
 
     
+Route::view('/clientes/nuevo', 'clientes.index')
+    ->middleware(['auth', 'verified'])
+    ->name('clientes.nuevo');
+
+Route::view('/clientes/{cliente}/editar', 'clientes.index')
+    ->middleware(['auth', 'verified'])
+    ->name('clientes.editar');
+
 Route::get('/clientes/{cliente}', function (\App\Models\Cliente $cliente) {
 
     $cliente->load([

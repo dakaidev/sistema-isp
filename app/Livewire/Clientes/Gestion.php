@@ -20,6 +20,10 @@ class Gestion extends Component
     // Cliente que estamos editando
     public ?int $clienteEditandoId = null;
 
+    // La lista y el formulario se muestran en paginas distintas.
+    public string $modoPantalla = 'lista';
+    public bool $mostrarFiltrosAvanzados = false;
+
     // Formulario
     public string $codigo = '';
     public string $nombre = '';
@@ -55,6 +59,19 @@ class Gestion extends Component
 
     public function mount(): void
     {
+        if (request()->routeIs('clientes.nuevo')) {
+            $this->modoPantalla = 'formulario';
+            return;
+        }
+
+        if (request()->routeIs('clientes.editar')) {
+            $this->modoPantalla = 'formulario';
+            $cliente = request()->route('cliente');
+            abort_unless(is_scalar($cliente) && ctype_digit((string) $cliente), 404);
+            $this->editar((int) $cliente);
+            return;
+        }
+
         $id = request()->query('cliente');
         if (is_scalar($id) && ctype_digit((string) $id) && (int) $id > 0 && Cliente::whereKey((int) $id)->exists()) {
             $this->abrirPerfil((int) $id);
@@ -70,11 +87,20 @@ class Gestion extends Component
     public string $filtroEstadoConexion = 'todos';
     public string $filtroFacturacion = 'todos';
     public string $filtroPlan = 'todos';
+    public string $filtroDeuda = 'todos';
+    public string $filtroRevision = 'todos';
 
     public function updatedFiltroSede(): void { $this->resetPage(); }
     public function updatedFiltroEstadoConexion(): void { $this->resetPage(); }
     public function updatedFiltroFacturacion(): void { $this->resetPage(); }
     public function updatedFiltroPlan(): void { $this->resetPage(); }
+    public function updatedFiltroDeuda(): void { $this->resetPage(); }
+    public function updatedFiltroRevision(): void { $this->resetPage(); }
+
+    public function alternarFiltrosAvanzados(): void
+    {
+        $this->mostrarFiltrosAvanzados = ! $this->mostrarFiltrosAvanzados;
+    }
     public function updatedBuscar(): void { $this->resetPage(); }
 
     public function limpiarFiltros(): void
@@ -83,6 +109,8 @@ class Gestion extends Component
         $this->filtroEstadoConexion = 'todos';
         $this->filtroFacturacion = 'todos';
         $this->filtroPlan = 'todos';
+        $this->filtroDeuda = 'todos';
+        $this->filtroRevision = 'todos';
         $this->buscar = '';
         $this->resetPage();
     }
@@ -194,6 +222,12 @@ class Gestion extends Component
         } else {
             $cliente = Cliente::create($datos);
             $mensaje = 'Cliente registrado. Ahora puedes configurar su facturacion.';
+        }
+
+        if ($this->modoPantalla === 'formulario') {
+            session()->flash('mensaje', $mensaje);
+            $this->redirect(route('clientes.index', ['cliente' => $cliente->id]), navigate: true);
+            return;
         }
 
         $this->cancelarEdicion();
@@ -403,6 +437,26 @@ class Gestion extends Component
     // Listado y búsqueda
     public function render()
     {
+        // El formulario tiene pagina independiente: no consulta la lista ni calcula estadisticas.
+        if ($this->modoPantalla === 'formulario') {
+            return view('livewire.clientes.gestion');
+        }
+
+        // Los saldos son cargos confirmados menos pagos efectivamente aplicados.
+        // Las anotaciones historicas sin cargo no generan deuda aqui.
+        $aplicaciones = DB::table('isp_aplicaciones_pago')
+            ->select('cargo_id')
+            ->selectRaw('SUM(monto) AS total_aplicado')
+            ->groupBy('cargo_id');
+
+        $existeDeuda = function ($query) use ($aplicaciones) {
+            $query->selectRaw('1')
+                ->from('isp_cargos as cargo_deuda')
+                ->leftJoinSub(clone $aplicaciones, 'aplicacion_deuda', 'aplicacion_deuda.cargo_id', '=', 'cargo_deuda.id')
+                ->whereColumn('cargo_deuda.cliente_id', 'clientes.id')
+                ->whereRaw('cargo_deuda.monto > COALESCE(aplicacion_deuda.total_aplicado, 0)');
+        };
+
         // La tarifa real para facturar procede SOLO de isp_configuracion_mensual.
         // Servicio tecnico opcional: elegir el ultimo registro, sin duplicar filas.
         $ultimoServicio = Servicio::query()
@@ -442,6 +496,13 @@ class Gestion extends Component
                 fn ($q) => $q->where('cfg.habilitado', 1))
             ->when($this->filtroFacturacion === 'deshabilitada',
                 fn ($q) => $q->where(fn ($sq) => $sq->whereNull('cfg.id')->orWhere('cfg.habilitado', 0)))
+            ->when($this->filtroDeuda === 'con_deuda', fn ($q) => $q->whereExists($existeDeuda))
+            ->when($this->filtroDeuda === 'sin_deuda', fn ($q) => $q->whereNotExists($existeDeuda))
+            ->when($this->filtroRevision === 'suspendido_facturando',
+                fn ($q) => $q->whereNull('clientes.fecha_baja')->where('svc.estado', 'suspendido')->where('cfg.habilitado', 1))
+            ->when($this->filtroRevision === 'activo_sin_facturar',
+                fn ($q) => $q->whereNull('clientes.fecha_baja')->where('svc.estado', 'activo')
+                    ->where(fn ($sub) => $sub->whereNull('cfg.id')->orWhere('cfg.habilitado', 0)))
             ->when($this->filtroPlan === 'sin_plan',
                 fn ($q) => $q->where(fn ($sq) => $sq->whereNull('svc.nombre_plan')->orWhere('svc.nombre_plan', '')))
             ->when(in_array($this->filtroPlan, array_keys(PlanesInternet::CATALOGO), true),
@@ -451,11 +512,27 @@ class Gestion extends Component
                 $query->where(function ($q) use ($texto) {
                     $q->where('clientes.codigo', 'like', "%{$texto}%")
                       ->orWhere('clientes.nombre', 'like', "%{$texto}%")
-                      ->orWhere('clientes.telefono', 'like', "%{$texto}%");
+                      ->orWhere('clientes.telefono', 'like', "%{$texto}%")
+                      ->orWhere('clientes.direccion', 'like', "%{$texto}%")
+                      ->orWhere('clientes.documento', 'like', "%{$texto}%");
                 });
             })
             ->orderByDesc('clientes.id')
-            ->paginate(10);
+            ->paginate(15);
+
+        // Una unica consulta agregada para los clientes de la pagina (evita N+1).
+        $idsPagina = $clientes->getCollection()->pluck('id')->all();
+        $deudasPagina = empty($idsPagina) ? collect() : DB::table('isp_cargos as cargo')
+            ->leftJoinSub(clone $aplicaciones, 'aplicacion', 'aplicacion.cargo_id', '=', 'cargo.id')
+            ->whereIn('cargo.cliente_id', $idsPagina)
+            ->select('cargo.cliente_id')
+            ->selectRaw('SUM(GREATEST(cargo.monto - COALESCE(aplicacion.total_aplicado, 0), 0)) AS pendiente')
+            ->groupBy('cargo.cliente_id')
+            ->pluck('pendiente', 'cargo.cliente_id');
+
+        $clientes->getCollection()->each(function ($cliente) use ($deudasPagina) {
+            $cliente->setAttribute('deuda_confirmada', (float) ($deudasPagina[$cliente->id] ?? 0));
+        });
 
         // Conteos globales, no dependen de los filtros ni de la paginacion.
         // Si una baja fue anotada, prevalece sobre el estado tecnico guardado.
