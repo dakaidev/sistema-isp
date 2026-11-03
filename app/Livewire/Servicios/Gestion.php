@@ -14,6 +14,15 @@ class Gestion extends Component
 {
     use WithPagination;
 
+    // La lista es la pantalla de inicio; los formularios se abren solo al usarlos.
+    public string $modoPantalla = 'lista';
+    public string $buscar = '';
+    public string $filtroEstado = 'todos';
+    public string $filtroTipo = 'todos';
+    public string $filtroLocalidad = 'todas';
+    public bool $soloPorRevisar = false; // Conexiones con velocidad pendiente de registrar
+    public string $clienteIdentificacion = ''; // Cabecera de edicion, solo lectura
+
     public ?int $servicioEditandoId = null;
    
     // Formulario para cambiar tarifas
@@ -41,6 +50,46 @@ class Gestion extends Component
     }
 
     
+    public function nuevo(): void
+    {
+        $this->cancelarEdicion();
+        $this->cerrarCambioTarifa();
+        $this->modoPantalla = 'formulario';
+    }
+
+    public function volverListado(): void
+    {
+        $this->cancelarEdicion();
+        $this->cerrarCambioTarifa();
+        $this->modoPantalla = 'lista';
+    }
+
+    public function updatedBuscar(): void { $this->resetPage(); }
+    public function updatedFiltroEstado(): void { $this->resetPage(); }
+    public function updatedFiltroTipo(): void { $this->resetPage(); }
+    public function updatedFiltroLocalidad(): void { $this->resetPage(); }
+
+    public function verConexiones(): void
+    {
+        $this->soloPorRevisar = false;
+        $this->resetPage();
+    }
+
+    public function verPorRevisar(): void
+    {
+        $this->soloPorRevisar = true;
+        $this->resetPage();
+    }
+
+    public function limpiarFiltros(): void
+    {
+        $this->buscar = '';
+        $this->filtroEstado = 'todos';
+        $this->filtroTipo = 'todos';
+        $this->filtroLocalidad = 'todas';
+        $this->resetPage();
+    }
+
     public function abrirCambioTarifa(int $id): void
     {
         // Comprobar que el servicio existe
@@ -48,6 +97,7 @@ class Gestion extends Component
 
         // Seleccionar el servicio
         $this->servicioTarifaId = $servicio->id;
+        $this->modoPantalla = 'tarifa';
 
         // Preparar el formulario
         $this->nuevoMonto = '';
@@ -59,6 +109,8 @@ class Gestion extends Component
 
     public function cerrarCambioTarifa(): void
     {
+        $this->modoPantalla = 'lista';
+
         $this->reset([
             'servicioTarifaId',
             'nuevoMonto',
@@ -182,9 +234,11 @@ class Gestion extends Component
     
     public function editar(int $id): void
     {
-        $servicio = Servicio::findOrFail($id);
+        $servicio = Servicio::with('cliente')->findOrFail($id);
 
+        $this->clienteIdentificacion = trim(($servicio->cliente?->codigo ?? '') . ' - ' . ($servicio->cliente?->nombre ?? 'Cliente no disponible'));
         $this->servicioEditandoId = $servicio->id;
+        $this->modoPantalla = 'formulario';
 
         $this->cliente_id = (string) $servicio->cliente_id;
         $this->tipo_conexion = $servicio->tipo_conexion;
@@ -227,24 +281,34 @@ class Gestion extends Component
 
 
 
-        $datos = $this->validate([
-            'cliente_id' => 'required|integer|exists:clientes,id',
+        // En edición solo validamos y guardamos datos técnicos.
+        // La tarifa inicial, el cliente titular y la fecha original NO son editables aquí.
+        $reglas = [
             'tipo_conexion' => 'required|in:fibra,inalambrico',
             'nombre_plan' => 'nullable|string|max:100',
             'velocidad_mbps' => 'nullable|integer|min:1',
-            'tarifa_mensual' => 'required|numeric|min:0.01|max:99999999.99',
-            'fecha_activacion' => 'nullable|date_format:Y-m-d',
             'estado' => 'required|in:activo,suspendido',
             'direccion_instalacion' => 'nullable|string',
             'ip_asignada' => 'nullable|ip',
             'mac_equipo' => 'nullable|string|max:30',
             'observaciones' => 'nullable|string',
-        ], [
+        ];
+
+        if ($this->servicioEditandoId === null) {
+            // Alta inicial: el modelo servicios exige una tarifa inicial y un cliente.
+            // Se conserva la creación del historial de Tarifa existente.
+            $reglas += [
+                'cliente_id' => 'required|integer|exists:clientes,id',
+                'tarifa_mensual' => 'required|numeric|min:0.01|max:99999999.99',
+                'fecha_activacion' => 'nullable|date_format:Y-m-d',
+            ];
+        }
+
+        $datos = $this->validate($reglas, [
             'cliente_id.required' => 'Selecciona un cliente.',
             'cliente_id.exists' => 'El cliente seleccionado no existe.',
             'tipo_conexion.required' => 'Selecciona el tipo de conexión.',
-            'tarifa_mensual.required' => 'Ingresa la mensualidad.',
-            'tarifa_mensual.numeric' => 'La mensualidad debe ser un número.',
+            'tarifa_mensual.required' => 'Ingresa la tarifa inicial del servicio.',
             'ip_asignada.ip' => 'Ingresa una dirección IP válida.',
         ]);
 
@@ -274,14 +338,6 @@ class Gestion extends Component
             // Buscar el servicio que estamos editando
             $servicio = Servicio::findOrFail(
                 $this->servicioEditandoId
-            );
-
-            // Estos datos se modificarán mediante
-            // procesos especiales con historial
-            unset(
-                $datos['cliente_id'],
-                $datos['tarifa_mensual'],
-                $datos['fecha_activacion']
             );
 
             // Actualizar sin crear otro registro
@@ -325,9 +381,11 @@ class Gestion extends Component
             'ip_asignada',
             'mac_equipo',
             'observaciones',
+            'clienteIdentificacion',
         ]);
 
         $this->fecha_activacion = '';
+        $this->modoPantalla = 'lista';
 
         $this->resetPage();
 
@@ -352,9 +410,11 @@ class Gestion extends Component
             'ip_asignada',
             'mac_equipo',
             'observaciones',
+            'clienteIdentificacion',
         ]);
 
         $this->fecha_activacion = '';
+        $this->modoPantalla = 'lista';
 
         $this->resetValidation();
     }
@@ -364,23 +424,49 @@ class Gestion extends Component
 
     public function render()
     {
+        $buscar = trim($this->buscar);
+
+        $servicios = Servicio::query()
+            ->with('cliente')
+            ->when($buscar !== '', function ($query) use ($buscar) {
+                $query->where(function ($q) use ($buscar) {
+                    $q->where('nombre_plan', 'like', "%{$buscar}%")
+                        ->orWhere('ip_asignada', 'like', "%{$buscar}%")
+                        ->orWhere('mac_equipo', 'like', "%{$buscar}%")
+                        ->orWhereHas('cliente', function ($cliente) use ($buscar) {
+                            $cliente->where('codigo', 'like', "%{$buscar}%")
+                                ->orWhere('nombre', 'like', "%{$buscar}%")
+                                ->orWhere('telefono', 'like', "%{$buscar}%");
+                        });
+                });
+            })
+            ->when($this->filtroEstado !== 'todos', fn ($q) =>
+                $q->where('estado', $this->filtroEstado))
+            ->when($this->filtroTipo !== 'todos', fn ($q) =>
+                $q->where('tipo_conexion', $this->filtroTipo))
+            ->when($this->soloPorRevisar, fn ($q) => $q->where(function ($v) {
+                $v->whereNull('velocidad_mbps')->orWhere('velocidad_mbps', '<=', 0);
+            }))
+            ->when($this->filtroLocalidad !== 'todas', fn ($q) =>
+                $q->whereHas('cliente', fn ($cliente) =>
+                    $cliente->where('sector', $this->filtroLocalidad)))
+            ->latest('id')
+            ->paginate(15);
+
         return view('livewire.servicios.gestion', [
-            'clientes' => Cliente::orderBy('nombre')->get([
-                'id',
-                'codigo',
-                'nombre',
-            ]),
-
-            'servicios' => Servicio::with('cliente')
-                ->latest('id')
-                ->paginate(10),
-
+            'clientes' => $this->modoPantalla === 'formulario'
+                ? Cliente::orderBy('nombre')->get(['id', 'codigo', 'nombre'])
+                : collect(),
+            'servicios' => $servicios,
+            'localidades' => Cliente::query()->whereNotNull('sector')
+                ->where('sector', '<>', '')
+                ->distinct()->orderBy('sector')->pluck('sector'),
             'totalServicios' => Servicio::count(),
-
-            'serviciosActivos' => Servicio::where(
-                'estado',
-                'activo'
-            )->count(),
+            'serviciosActivos' => Servicio::where('estado', 'activo')->count(),
+            'serviciosSuspendidos' => Servicio::where('estado', 'suspendido')->count(),
+            'serviciosPorRevisar' => Servicio::where(function ($q) {
+                $q->whereNull('velocidad_mbps')->orWhere('velocidad_mbps', '<=', 0);
+            })->count(),
         ]);
     }
 }

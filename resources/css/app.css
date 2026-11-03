@@ -64,3 +64,9 @@ select:focus[data-flux-control] {
 /* \[:where(&)\]:size-4 {
     @apply size-4;
 } */
+/* Unificar las opciones de los desplegables */
+select option,
+select optgroup {
+    background-color: #ffffff;
+    color: #111827;
+}
