@@ -1,0 +1,50 @@
+name: "ULTRA - Conexion GitHub a DigitalOcean"
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ultra-conexion-main
+  cancel-in-progress: true
+
+jobs:
+  verificar-servidor:
+    name: "Verificar SSH con el Droplet (sin desplegar)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: "Preparar clave y huella SSH"
+        env:
+          ULTRA_KEY: ${{ secrets.ULTRA_SSH_PRIVATE_KEY }}
+          ULTRA_KNOWN_HOSTS: ${{ secrets.ULTRA_SSH_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$ULTRA_KEY" || -z "$ULTRA_KNOWN_HOSTS" ]]; then
+            echo "Faltan los secretos ULTRA_SSH_PRIVATE_KEY o ULTRA_SSH_KNOWN_HOSTS en GitHub"
+            exit 1
+          fi
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$ULTRA_KEY" > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$ULTRA_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: "Comprobar acceso limitado al servidor"
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/id_ed25519" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=10 \
+            deploy@104.236.37.65 \
+            'echo CONEXION_OK; echo "Usuario: $(whoami)"; hostname; php -v | head -n 1'
