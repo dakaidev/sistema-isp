@@ -11,6 +11,8 @@ use Livewire\Component;
 /** Ficha de pagos, cargos, adelantos e historial del sistema. */
 class FichaCliente extends Component
 {
+    public function boot(): void { \App\Support\IspAccess::enforce('cobranza.view'); }
+
     public int $clienteId;
     public string $formulario = '';
 
@@ -52,6 +54,9 @@ class FichaCliente extends Component
 
     public function abrir(string $tipo): void
     {
+        if ($tipo === 'pago') \App\Support\IspAccess::enforce('cobranza.pay');
+        if ($tipo === 'tarifa' || $tipo === 'cargo') \App\Support\IspAccess::enforce('tarifas.manage');
+
         if (!in_array($tipo, ['tarifa', 'pago'], true)) {
             abort(400);
         }
@@ -81,6 +86,8 @@ class FichaCliente extends Component
     /** Permite corregir un cargo mensual sin crear pagos ni descuentos ficticios. */
     public function abrirCorreccionCargo(int $cargoId): void
     {
+        \App\Support\IspAccess::enforce('cobranza.adjust');
+
         $cargo = DB::table('isp_cargos')->where('id', $cargoId)
             ->where('cliente_id', $this->clienteId)->where('categoria', 'internet')
             ->whereIn('tipo', ['cargo_manual', 'mensualidad_automatica'])->first();
@@ -106,6 +113,8 @@ class FichaCliente extends Component
     /** Guardar nueva cifra + razon, en la misma transaccion y con bloqueo por cliente. */
     public function guardarCorreccionCargoAuditada(): void
     {
+        \App\Support\IspAccess::enforce('cobranza.adjust');
+
         if ($this->cargoCorreccionId === null) abort(400);
         $datos = $this->validate([
             'cargoCorreccionMonto' => ['required', 'numeric', 'decimal:0,2', 'between:0.01,99999999.99'],
@@ -166,6 +175,8 @@ class FichaCliente extends Component
 
     public function guardarTarifa(): void
     {
+        \App\Support\IspAccess::enforce('tarifas.manage');
+
         if ($this->formulario !== 'tarifa') abort(400);
         $datos = $this->validate([
             'tarifa' => ['required', 'numeric', 'decimal:0,2', 'between:0.01,99999999.99'],
@@ -217,6 +228,8 @@ class FichaCliente extends Component
     /** Registra dinero recibido y su destino en UNA transaccion; jamas aplica FIFO. */
     public function guardarPago(): void
     {
+        \App\Support\IspAccess::enforce('cobranza.pay');
+
         if ($this->formulario !== 'pago') abort(400);
         $datos = $this->validate([
             'importe' => ['required', 'numeric', 'decimal:0,2', 'between:0.01,99999999.99'],

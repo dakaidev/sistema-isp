@@ -1,6 +1,6 @@
 <div class="mx-auto w-full max-w-7xl space-y-6 pb-12">
     <div class="rounded-3xl bg-gradient-to-r from-slate-900 to-blue-900 p-7 text-white">
-        <p class="text-xs font-bold uppercase tracking-widest text-blue-200">Sistema ISP / Infraestructura</p>
+        <p class="text-xs font-bold uppercase tracking-widest text-blue-200">ULTRA / Infraestructura</p>
         <h1 class="mt-3 text-3xl font-bold">Cajas NAP y puertos</h1>
         <p class="mt-2 text-sm text-blue-100">Registra las cajas de Upina y Calasuca por separado. Las sedes tienen servidores independientes.</p>
         <p class="mt-2 text-xs text-blue-200">Fase 1: inventario físico y estados revisados. La vinculación a clientes e instalaciones se hará después; no se crean conexiones ni cobros.</p>
@@ -23,6 +23,7 @@
         </div>
     </div>
 
+    @if(\App\Support\IspAccess::allows(auth()->user(), 'nap.edit'))
     <section class="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 p-5 dark:border-zinc-800">
             <div>
@@ -88,6 +89,7 @@
             </div>
         </form>
     </section>
+    @endif
 
     <section class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div class="flex flex-wrap items-end gap-4 p-5">
@@ -127,7 +129,9 @@
                             <td class="p-4">
                                 <div class="flex flex-wrap gap-2">
                                     <button type="button" wire:click="seleccionarCaja({{ $caja->id }})" class="rounded-lg bg-blue-100 px-3 py-2 text-xs font-bold text-blue-800 dark:bg-blue-950 dark:text-blue-300">Ver puertos</button>
-                                    <button type="button" wire:click="editarCaja({{ $caja->id }})" class="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-semibold dark:border-zinc-700">Editar caja</button>
+                                    @if(\App\Support\IspAccess::allows(auth()->user(), 'nap.edit'))
+<button type="button" wire:click="editarCaja({{ $caja->id }})" class="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-semibold dark:border-zinc-700">Editar caja</button>
+@endif
                                 </div>
                             </td>
                         </tr>
@@ -164,10 +168,17 @@
                             'fuera_de_servicio' => 'Sin servicio', default => 'Sin verificar',
                         };
                     @endphp
+                    @if(\App\Support\IspAccess::allows(auth()->user(), 'nap.edit'))
                     <button type="button" wire:key="nap-puerto-{{ $puerto->id }}" wire:click="abrirPuerto({{ $puerto->id }})" class="min-h-20 rounded-xl border-2 p-3 text-center transition hover:shadow-md {{ $estilos }}">
                         <span class="block text-lg font-bold">P{{ $puerto->numero }}</span>
                         <span class="mt-1 block text-xs">{{ $nombreEstado }}</span>
                     </button>
+                    @else
+                    <div wire:key="nap-puerto-{{ $puerto->id }}" class="min-h-20 rounded-xl border-2 p-3 text-center {{ $estilos }}">
+                        <span class="block text-lg font-bold">P{{ $puerto->numero }}</span>
+                        <span class="mt-1 block text-xs">{{ $nombreEstado }}</span>
+                    </div>
+                    @endif
                 @endforeach
             </div>
 

@@ -1,6 +1,6 @@
 <div class="mx-auto max-w-7xl space-y-5 pb-12">
     <header class="rounded-3xl bg-gradient-to-r from-slate-950 via-slate-900 to-blue-900 p-5 text-white shadow-sm sm:p-7">
-        <p class="text-xs font-bold uppercase tracking-widest text-blue-200">Sistema ISP / Facturación y cobros</p>
+        <p class="text-xs font-bold uppercase tracking-widest text-blue-200">ULTRA / Facturación y cobros</p>
         <div class="mt-3 flex flex-wrap items-start justify-between gap-4">
             <div class="max-w-2xl">
                 <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl">Mensualidades</h1>

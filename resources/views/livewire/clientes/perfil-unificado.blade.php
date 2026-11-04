@@ -38,6 +38,9 @@
         <section class="rounded-2xl border border-emerald-600/30 p-4 dark:bg-emerald-950/10 sm:p-5">
             <h4 class="text-lg font-bold">1. Facturación mensual</h4>
             <p class="mt-1 text-xs leading-5 text-zinc-500">Este es el importe oficial que usa el generador de mensualidades. No modifica cargos ni pagos anteriores.</p>
+            @if ($perfilAvisoFacturacion !== '')
+                <p role="status" class="mt-3 rounded-xl border border-emerald-600/40 bg-emerald-500/10 p-3 text-sm font-semibold text-emerald-700 dark:text-emerald-300">{{ $perfilAvisoFacturacion }}</p>
+            @endif
             <form wire:submit="guardarFacturacion" class="mt-4 space-y-4">
                 <div>
                     <label class="mb-1 block text-sm font-semibold">Tarifa por mes (S/)</label>
@@ -51,7 +54,7 @@
                 </div>
                 <label class="flex items-start gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
                     <input type="checkbox" wire:model="perfilHabilitado" class="mt-1 size-4" />
-                    <span class="text-sm"><strong class="block">Habilitar facturación</strong><span class="text-xs text-zinc-500">Actívala solo si corresponde cobrar mensualidades al cliente. No cobra de inmediato por este botón.</span></span>
+                    <span class="text-sm"><strong class="block">Habilitar facturación</strong><span class="text-xs text-zinc-500">Al guardar, si corresponde, se crea el cargo de este mes sin duplicarlo. No se registra ningún pago.</span></span>
                 </label>
                 @error('perfilHabilitado') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
                 <button type="submit" wire:loading.attr="disabled" wire:target="guardarFacturacion" class="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">Guardar facturación</button>

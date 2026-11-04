@@ -1,4 +1,4 @@
-<x-layouts::app :title="'Ficha del Cliente | Sistema ISP'">
+<x-layouts::app :title="'Ficha del Cliente'">
     @php
         // Presentacion solamente. Todos los importes provienen del resumen de consulta existente.
         $facturacion = $resumenFicha['configuracion'];

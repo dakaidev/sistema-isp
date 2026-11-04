@@ -1,3 +1,3 @@
-<x-layouts::app :title="'Cobranza | Sistema ISP'">
+<x-layouts::app :title="'Cobranza'">
     <livewire:cobranza.gestion />
 </x-layouts::app>

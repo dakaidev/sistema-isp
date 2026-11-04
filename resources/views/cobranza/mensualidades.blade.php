@@ -1,3 +1,3 @@
-<x-layouts::app :title="'Mensualidades | Sistema ISP'">
+<x-layouts::app :title="'Mensualidades'">
     <livewire:cobranza.mensualidades />
 </x-layouts::app>

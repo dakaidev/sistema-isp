@@ -1,4 +1,19 @@
-<x-layouts::app :title="'Inicio | Sistema ISP'">
+<x-layouts::app :title="'Inicio'">
+    @if(!\App\Support\IspAccess::allows(auth()->user(), 'finanzas.view'))
+      <section class="mx-auto max-w-5xl space-y-5 pb-10">
+        <div class="rounded-2xl bg-gradient-to-r from-slate-950 to-blue-900 p-7 text-white">
+          <h1 class="text-2xl font-bold">Bienvenido al ULTRA</h1>
+          <p class="mt-2 text-sm text-blue-100">Accede únicamente a los módulos autorizados para tu cuenta.</p>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          @foreach (['clientes.view' => ['clientes.index', 'Clientes'], 'servicios.view' => ['servicios.index', 'Servicios de Internet'], 'nap.view' => ['nap.index', 'Cajas NAP'], 'cobranza.view' => ['cobranza.index', 'Cobros y deudas']] as $perm => [$ruta, $nombre])
+            @if(\App\Support\IspAccess::allows(auth()->user(), $perm))
+              <a class="rounded-xl border border-zinc-300 bg-white p-5 text-lg font-bold hover:border-blue-500 dark:border-zinc-700 dark:bg-zinc-900" href="{{ route($ruta) }}">{{ $nombre }} →</a>
+            @endif
+          @endforeach
+        </div>
+      </section>
+    @else
     @php
         // Estadísticas de clientes, cargos y pagos registrados realmente en MySQL.
         $db = \Illuminate\Support\Facades\DB::class;
@@ -20,9 +35,9 @@
                 <div class="max-w-2xl space-y-3">
                     <div class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-bold tracking-wider text-blue-100">
                         <span class="inline-block size-2 rounded-full bg-emerald-400"></span>
-                        SISTEMA ISP · PANEL DE CONTROL
+                        ULTRA · PANEL DE CONTROL
                     </div>
-                    <h1 class="text-3xl font-extrabold tracking-tight md:text-4xl">Bienvenido a tu ISP</h1>
+                    <h1 class="text-3xl font-extrabold tracking-tight md:text-4xl">Bienvenido a ULTRA</h1>
                     <p class="max-w-xl text-sm leading-relaxed text-blue-100 md:text-base">Tus clientes, mensualidades y cobranzas desde un solo lugar. Trabaja abonado por abonado, con información verificada.</p>
                 </div>
                 <div class="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-left backdrop-blur-sm">
@@ -114,4 +129,5 @@
             </div>
         </section>
     </div>
+    @endif
 </x-layouts::app>

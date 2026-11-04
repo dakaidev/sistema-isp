@@ -1,16 +1,12 @@
 <div class="mx-auto max-w-7xl space-y-5 pb-12">
     {{-- Mejora 06: cobranza operativa centralizada, sin alterar la lógica de cargos/pagos. --}}
     <header class="rounded-3xl border border-blue-800/40 bg-gradient-to-r from-slate-950 via-blue-950 to-blue-800 p-5 text-white shadow-sm sm:p-7">
-        <p class="text-xs font-bold uppercase tracking-wider text-blue-200">Sistema ISP / Facturación y cobros</p>
+        <p class="text-xs font-bold uppercase tracking-wider text-blue-200">ULTRA / Facturación y cobros</p>
         <div class="mt-3 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div class="max-w-2xl">
                 <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl">Cobros y deudas</h1>
-                <p class="mt-2 text-sm leading-6 text-blue-100">Un solo lugar para consultar deuda confirmada, registrar pagos y revisar posibles cortes. Los cargos mensuales se administran en Gestión mensual.</p>
+                <p class="mt-2 text-sm leading-6 text-blue-100">Deudas y pagos desde un solo lugar. Los cargos del mes actual se completan automáticamente al abrir Cobros y deudas.</p>
             </div>
-            <a href="{{ route('cobranza.mensualidades') }}" class="inline-flex shrink-0 items-center justify-between gap-4 rounded-2xl border border-blue-400/50 bg-blue-600/25 px-5 py-4 text-sm font-bold text-white hover:bg-blue-600/40">
-                <span><span class="block text-base">Gestión mensual</span><span class="mt-1 block text-xs font-normal text-blue-100">Generar cargos · configurar tarifas</span></span>
-                <span aria-hidden="true" class="text-xl">→</span>
-            </a>
         </div>
     </header>
 
@@ -23,6 +19,7 @@
     @error('operacion')
         <div role="alert" class="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-300">{{ $message }}</div>
     @enderror
+
 
     {{-- Los valores se obtienen de MySQL. Cobrado = pagos recibidos durante el mes seleccionado. --}}
     <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores de cobranza">
@@ -96,7 +93,6 @@
                 <h2 class="text-lg font-bold">Clientes y estado de cobranza</h2>
                 <p class="mt-1 text-xs text-zinc-500">{{ $clientes->total() }} resultados · Deuda basada en cargos y pagos aplicados</p>
             </div>
-            <a href="{{ route('cobranza.mensualidades') }}" class="rounded-xl border border-blue-500 px-4 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/40">Revisar gestión mensual →</a>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full min-w-[990px] text-left text-sm">
@@ -151,10 +147,16 @@
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex justify-end gap-1.5">
-                                    <a href="{{ route('cobranza.ficha', ['cliente' => $cliente->id]) }}" class="shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700">Cobrar</a>
-                                    <a href="{{ route('clientes.show', ['cliente' => $cliente->id]) }}" class="shrink-0 rounded-lg border border-zinc-300 px-3 py-2 text-xs font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">Ficha</a>
+                                    @if(\App\Support\IspAccess::allows(auth()->user(), 'cobranza.pay'))
+<a href="{{ route('cobranza.ficha', ['cliente' => $cliente->id]) }}" class="shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700">Cobrar</a>
+@endif
+                                    @if(\App\Support\IspAccess::allows(auth()->user(), 'clientes.view'))
+<a href="{{ route('clientes.show', ['cliente' => $cliente->id]) }}" class="shrink-0 rounded-lg border border-zinc-300 px-3 py-2 text-xs font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">Ficha</a>
+@endif
                                     <button type="button" wire:click="abrir({{ $cliente->id }}, 'historial')" class="shrink-0 rounded-lg border border-zinc-300 px-3 py-2 text-xs font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">Historial</button>
-                                    <button type="button" wire:click="abrir({{ $cliente->id }}, 'cargo')" title="Registrar cargo manual confirmado" aria-label="Cargo manual para {{ $cliente->nombre }}" class="shrink-0 rounded-lg border border-zinc-300 px-3 py-2 text-xs font-bold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">+</button>
+                                    @if(\App\Support\IspAccess::allows(auth()->user(), 'cobranza.adjust'))
+<button type="button" wire:click="abrir({{ $cliente->id }}, 'cargo')" title="Registrar cargo manual confirmado" aria-label="Cargo manual para {{ $cliente->nombre }}" class="shrink-0 rounded-lg border border-zinc-300 px-3 py-2 text-xs font-bold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">+</button>
+@endif
                                 </div>
                             </td>
                         </tr>
@@ -182,7 +184,7 @@
                 </div>
 
                 @if ($accion === 'cargo')
-                    <p class="mt-4 text-sm text-zinc-500">Solo para cargos comprobados y excepcionales. Las mensualidades automáticas se administran desde Gestión mensual.</p>
+                    <p class="mt-4 text-sm text-zinc-500">Solo para cargos comprobados y excepcionales. La generación automática está en el panel desplegable de esta misma página.</p>
                     <form wire:submit="guardarCargo" class="mt-4 space-y-4">
                         <div class="grid gap-4 sm:grid-cols-2">
                             <label class="block"><span class="mb-1 block text-sm font-semibold">Importe (S/)</span><input type="number" min="0.01" step="0.01" wire:model="importe" required class="w-full rounded-xl border border-zinc-300 bg-transparent px-4 py-3 dark:border-zinc-700" />@error('importe') <span class="text-xs text-red-500">{{ $message }}</span> @enderror</label>

@@ -1,6 +1,6 @@
 <div class="mx-auto max-w-5xl space-y-5 pb-12">
     <section class="rounded-3xl bg-gradient-to-r from-slate-950 via-blue-950 to-blue-800 p-7 text-white">
-        <p class="text-xs font-bold uppercase tracking-widest text-blue-200">Sistema ISP / Distribución por períodos</p>
+        <p class="text-xs font-bold uppercase tracking-widest text-blue-200">ULTRA / Distribución por períodos</p>
         <h1 class="mt-3 text-3xl font-extrabold">{{ $pago->cliente_nombre }}</h1>
         <p class="mt-2 text-sm text-blue-100">{{ $pago->cliente_codigo }} · Pago #{{ $pago->id }} · Fecha de ingreso: {{ $pago->fecha_pago }}</p>
         <a class="mt-5 inline-block rounded-xl border border-white/30 px-4 py-2 text-sm font-semibold text-white" href="{{ route('cobranza.ficha', $pago->cliente_id) }}">← Volver a la ficha</a>

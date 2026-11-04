@@ -42,56 +42,92 @@ class GeneradorMensualidades
                         }
                         continue;
                     }
-                    // Bloquear al cliente coordina esta escritura con los pagos de Livewire.
-                    $resultado = DB::transaction(function () use ($plan, $inicio) {
-                        DB::table('clientes')->where('id', $plan->cliente_id)->lockForUpdate()->first();
-                        $actual = DB::table('isp_configuracion_mensual')
-                            ->where('cliente_id', $plan->cliente_id)->lockForUpdate()->first();
-                        if (!$actual || !$actual->habilitado || !$actual->tarifa_mensual ||
-                            $actual->inicio_cobro > $inicio->endOfMonth()->toDateString()) return [false, 0];
-                        if (DB::table('isp_mensualidades_generadas')->where('cliente_id', $plan->cliente_id)
-                            ->where('periodo', $inicio->toDateString())->exists()) return [false, 0];
-
-                        $centavos = $this->montoProrrateado($actual, $inicio);
-                        if ($centavos <= 0) return [false, 0];
-                        $alta = CarbonImmutable::parse($actual->inicio_cobro, 'America/Lima');
-                        $vence = $inicio->addDays(4); // 5 del mes
-                        if ($alta->betweenIncluded($inicio, $inicio->endOfMonth()) && $alta->greaterThan($vence)) {
-                            $vence = $alta->addDays(4); // Alta posterior al 5: 5 días desde alta
-                        }
-                        $monto = $this->dinero($centavos);
-                        $idCargo = DB::table('isp_cargos')->insertGetId([
-                            'cliente_id' => $plan->cliente_id,
-                            'servicio_id' => null, // MVP: un abono mensual por cliente
-                            'tipo' => 'mensualidad_automatica',
-                            'categoria' => 'internet',
-                            'descripcion' => 'Internet ' . $inicio->locale('es')->translatedFormat('F Y') .
-                                ($alta->betweenIncluded($inicio->addDay(), $inicio->endOfMonth()) ? ' (primer mes proporcional)' : ''),
-                            'monto' => $monto,
-                            'fecha_vencimiento' => $vence->toDateString(),
-                            'usuario_id' => null,
-                            'created_at' => now(), 'updated_at' => now(),
-                        ]);
-                        DB::table('isp_mensualidades_generadas')->insert([
-                            'cliente_id' => $plan->cliente_id, 'cargo_id' => $idCargo,
-                            'periodo' => $inicio->toDateString(),
-                            'tarifa_base' => $actual->tarifa_mensual,
-                            'created_at' => now(), 'updated_at' => now(),
-                        ]);
-                        // No consumir pagos antiguos cuando se crea un mes nuevo.
-                        // Solo una asignacion explicita puede aplicar anticipos a futuros meses.
-                        // Aplicar EXCLUSIVAMENTE dinero reservado para esta mensualidad.
-                        app(AplicadorAnticiposInternet::class)->alGenerar((int) $plan->cliente_id, (int) $idCargo, $inicio->toDateString());
-                        return [true, $centavos];
-                    }, 3);
-                    if ($resultado[0]) {
+                    // La generacion masiva y la individual usan exactamente la misma regla.
+                    $resultado = $this->generarCargoParaCliente((int) $plan->cliente_id, $inicio);
+                    if ($resultado['estado'] === 'creado') {
                         ++$resumen['nuevos'];
-                        $totalCentavos += $resultado[1];
+                        $totalCentavos += $resultado['centavos'];
                     } else ++$resumen['existentes'];
                 }
             });
         $resumen['total'] = $this->dinero($totalCentavos);
         return $resumen;
+    }
+
+
+    /**
+     * Crear unicamente la mensualidad del cliente cuya facturacion se acaba de guardar.
+     * No procesa otros clientes ni periodos pasados/futuros. Es idempotente.
+     * Devuelve estado = creado | existente | no_corresponde | sin_facturacion.
+     */
+    public function generarMesActualParaCliente(int $clienteId): array
+    {
+        if ($clienteId <= 0) {
+            throw new InvalidArgumentException('Cliente no valido para generar mensualidad.');
+        }
+
+        $inicio = CarbonImmutable::now('America/Lima')->startOfMonth();
+        $resultado = $this->generarCargoParaCliente($clienteId, $inicio);
+        return [
+            'estado' => $resultado['estado'],
+            'mes' => $inicio->format('Y-m'),
+            'monto' => $this->dinero($resultado['centavos']),
+        ];
+    }
+
+    /**
+     * Transaccion para un solo cliente. La fila del cliente se bloquea igual
+     * que en la emision masiva y el anticipo se aplica en la misma transaccion.
+     */
+    private function generarCargoParaCliente(int $clienteId, CarbonImmutable $inicio): array
+    {
+        return DB::transaction(function () use ($clienteId, $inicio) {
+            DB::table('clientes')->where('id', $clienteId)->lockForUpdate()->firstOrFail();
+            $actual = DB::table('isp_configuracion_mensual')
+                ->where('cliente_id', $clienteId)->lockForUpdate()->first();
+            if (!$actual || !$actual->habilitado || !$actual->tarifa_mensual || (float) $actual->tarifa_mensual <= 0) {
+                return ['estado' => 'sin_facturacion', 'centavos' => 0];
+            }
+            if ($actual->inicio_cobro > $inicio->endOfMonth()->toDateString()) {
+                return ['estado' => 'no_corresponde', 'centavos' => 0];
+            }
+            if (DB::table('isp_mensualidades_generadas')->where('cliente_id', $clienteId)
+                ->where('periodo', $inicio->toDateString())->exists()) {
+                return ['estado' => 'existente', 'centavos' => 0];
+            }
+
+            $centavos = $this->montoProrrateado($actual, $inicio);
+            if ($centavos <= 0) {
+                return ['estado' => 'no_corresponde', 'centavos' => 0];
+            }
+            $alta = CarbonImmutable::parse($actual->inicio_cobro, 'America/Lima');
+            $vence = $inicio->addDays(4); // Día 5 del mes, misma regla anterior.
+            if ($alta->betweenIncluded($inicio, $inicio->endOfMonth()) && $alta->greaterThan($vence)) {
+                $vence = $alta->addDays(4);
+            }
+            $monto = $this->dinero($centavos);
+            $idCargo = DB::table('isp_cargos')->insertGetId([
+                'cliente_id' => $clienteId,
+                'servicio_id' => null,
+                'tipo' => 'mensualidad_automatica',
+                'categoria' => 'internet',
+                'descripcion' => 'Internet ' . $inicio->locale('es')->translatedFormat('F Y') .
+                    ($alta->betweenIncluded($inicio->addDay(), $inicio->endOfMonth()) ? ' (primer mes proporcional)' : ''),
+                'monto' => $monto,
+                'fecha_vencimiento' => $vence->toDateString(),
+                'usuario_id' => null,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            DB::table('isp_mensualidades_generadas')->insert([
+                'cliente_id' => $clienteId, 'cargo_id' => $idCargo,
+                'periodo' => $inicio->toDateString(),
+                'tarifa_base' => $actual->tarifa_mensual,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            // Solo consume los adelantos reservados para este cliente y mes.
+            app(AplicadorAnticiposInternet::class)->alGenerar($clienteId, (int) $idCargo, $inicio->toDateString());
+            return ['estado' => 'creado', 'centavos' => $centavos];
+        }, 3);
     }
 
     /** Mantener crédito a favor y pagos parciales del módulo Cobranza anterior. */

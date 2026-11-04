@@ -13,6 +13,8 @@ use Livewire\Component;
 /** Un ingreso bancario, varios destinos mensuales, sin aplicar FIFO. */
 class PagoAdelantado extends Component
 {
+    public function boot(): void { \App\Support\IspAccess::enforce('cobranza.pay'); }
+
     public int $clienteId;
     public string $importe = '';
     public string $operacionUuid = '';

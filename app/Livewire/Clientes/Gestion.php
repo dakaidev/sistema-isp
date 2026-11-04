@@ -5,6 +5,7 @@ namespace App\Livewire\Clientes;
 use App\Models\Cliente;
 use App\Models\Servicio;
 use App\Models\Tarifa;
+use App\Services\Cobranza\GeneradorMensualidades;
 use App\Support\PlanesInternet;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -15,6 +16,8 @@ use Livewire\WithPagination;
 
 class Gestion extends Component
 {
+    public function boot(): void { \App\Support\IspAccess::enforce('clientes.view'); }
+
     use WithPagination;
 
     // Cliente que estamos editando
@@ -45,6 +48,7 @@ class Gestion extends Component
     public string $perfilTarifa = '';
     public string $perfilInicio = '';
     public bool $perfilHabilitado = false;
+    public string $perfilAvisoFacturacion = '';
     public string $perfilSede = '';
 
     // Informacion tecnica opcional: NO habilita facturacion por si sola.
@@ -118,6 +122,8 @@ class Gestion extends Component
     // Cargar los datos de un cliente en el formulario
     public function editar(int $id): void
     {
+        \App\Support\IspAccess::enforce('clientes.edit');
+
         $cliente = Cliente::findOrFail($id);
 
         $this->clienteEditandoId = $cliente->id;
@@ -141,6 +147,8 @@ class Gestion extends Component
     // Guardar un cliente nuevo o actualizar uno existente
     public function guardar(): void
     {
+        \App\Support\IspAccess::enforce('clientes.edit');
+
         $this->codigo = strtoupper(trim($this->codigo));
         $this->nombre = trim($this->nombre);
         $this->ubicacionGps = trim($this->ubicacionGps);
@@ -271,6 +279,7 @@ class Gestion extends Component
         $this->perfilTarifa = $cfg && $cfg->tarifa_mensual !== null ? (string) $cfg->tarifa_mensual : '';
         $this->perfilInicio = $cfg?->inicio_cobro ?: today('America/Lima')->startOfMonth()->toDateString();
         $this->perfilHabilitado = $cfg ? (bool) $cfg->habilitado : false;
+        $this->perfilAvisoFacturacion = '';
         $this->perfilSede = $cliente->sede ?? '';
 
         $this->perfilCantidadServicios = $servicios->count();
@@ -289,7 +298,7 @@ class Gestion extends Component
     {
         $this->reset([
             'perfilClienteId', 'perfilClienteNombre', 'perfilTarifa', 'perfilInicio',
-            'perfilHabilitado', 'perfilSede', 'perfilServicioId', 'perfilCantidadServicios',
+            'perfilHabilitado', 'perfilAvisoFacturacion', 'perfilSede', 'perfilServicioId', 'perfilCantidadServicios',
             'perfilTipoConexion', 'perfilPlan', 'perfilPlanElegido', 'perfilVelocidad',
             'perfilFechaActivacion', 'perfilEstado',
         ]);
@@ -300,6 +309,8 @@ class Gestion extends Component
     // No genera servicios, mensualidades, cargos ni pagos.
     public function guardarSede(): void
     {
+        \App\Support\IspAccess::enforce('clientes.edit');
+
         if ($this->perfilClienteId === null) abort(400);
 
         $datos = $this->validate([
@@ -319,6 +330,8 @@ class Gestion extends Component
 
     public function guardarFacturacion(): void
     {
+        \App\Support\IspAccess::enforce('clientes.edit');
+
         if ($this->perfilClienteId === null) abort(400);
 
         $datos = $this->validate([
@@ -327,25 +340,50 @@ class Gestion extends Component
             'perfilHabilitado' => ['boolean'],
         ]);
 
-        DB::transaction(function () use ($datos) {
-            Cliente::whereKey($this->perfilClienteId)->lockForUpdate()->firstOrFail();
-            $cfg = DB::table('isp_configuracion_mensual')->where('cliente_id', $this->perfilClienteId)->first();
-            $valores = [
-                'tarifa_mensual' => number_format((float) $datos['perfilTarifa'], 2, '.', ''),
-                'inicio_cobro' => $datos['perfilInicio'],
-                'habilitado' => (bool) $datos['perfilHabilitado'],
-                'updated_at' => now(),
-            ];
-            if ($cfg) {
-                DB::table('isp_configuracion_mensual')->where('cliente_id', $this->perfilClienteId)->update($valores);
-            } else {
-                DB::table('isp_configuracion_mensual')->insert(['cliente_id' => $this->perfilClienteId, 'created_at' => now()] + $valores);
-            }
-        }, 3);
+        $resultado = null;
+        try {
+            // Guardar configuracion y crear el cargo del mes actual como una sola
+            // operacion: si falla la emision, se revierte tambien la configuracion.
+            DB::transaction(function () use ($datos, &$resultado) {
+                Cliente::whereKey($this->perfilClienteId)->lockForUpdate()->firstOrFail();
+                $cfg = DB::table('isp_configuracion_mensual')->where('cliente_id', $this->perfilClienteId)->first();
+                $valores = [
+                    'tarifa_mensual' => number_format((float) $datos['perfilTarifa'], 2, '.', ''),
+                    'inicio_cobro' => $datos['perfilInicio'],
+                    'habilitado' => (bool) $datos['perfilHabilitado'],
+                    'updated_at' => now(),
+                ];
+                if ($cfg) {
+                    DB::table('isp_configuracion_mensual')->where('cliente_id', $this->perfilClienteId)->update($valores);
+                } else {
+                    DB::table('isp_configuracion_mensual')->insert(['cliente_id' => $this->perfilClienteId, 'created_at' => now()] + $valores);
+                }
+                if ($datos['perfilHabilitado']) {
+                    // SOLO el cliente que se acaba de configurar, sin tocar otros clientes.
+                    $resultado = app(GeneradorMensualidades::class)
+                        ->generarMesActualParaCliente((int) $this->perfilClienteId);
+                }
+            }, 3);
+        } catch (\Throwable $error) {
+            report($error);
+            throw ValidationException::withMessages([
+                'perfilTarifa' => 'No se pudo completar la facturacion. No se guardaron cambios ni cargos nuevos. Revisa el log de Laravel.',
+            ]);
+        }
+
+        $mes = today('America/Lima')->locale('es')->translatedFormat('F Y');
+        $mensaje = match ($resultado['estado'] ?? 'deshabilitada') {
+            'creado' => 'Facturacion guardada. Mensualidad de ' . $mes . ' generada por S/ ' . $resultado['monto'] . '. Los adelantos de este mes se aplican si corresponden.',
+            'existente' => 'Facturacion guardada. La mensualidad de ' . $mes . ' ya existia: no se duplico ni se cambio su importe.',
+            'no_corresponde' => 'Facturacion guardada. Aun no corresponde crear mensualidad en ' . $mes . ' segun la fecha de inicio.',
+            'sin_facturacion' => 'Facturacion guardada. No corresponde generar un cargo con la configuracion actual.',
+            default => 'Facturacion guardada con el cobro deshabilitado. No se genero mensualidad.',
+        };
 
         $id = $this->perfilClienteId;
         $this->abrirPerfil($id);
-        session()->flash('mensaje', 'Facturacion guardada. No se modificaron cargos ya emitidos ni pagos.');
+        $this->perfilAvisoFacturacion = $mensaje;
+        session()->flash('mensaje', $mensaje);
     }
 
     // Elegir un plan prepara el nombre y velocidad tecnicos, sin cobrar ni cambiar tarifas.
@@ -372,6 +410,8 @@ class Gestion extends Component
 
     public function guardarConexion(): void
     {
+        \App\Support\IspAccess::enforce('clientes.edit');
+
         if ($this->perfilClienteId === null) abort(400);
         if ($this->perfilCantidadServicios > 1) {
             throw ValidationException::withMessages(['perfilTipoConexion' => 'Este cliente tiene varias conexiones. Revisalas individualmente en Servicios de Internet.']);

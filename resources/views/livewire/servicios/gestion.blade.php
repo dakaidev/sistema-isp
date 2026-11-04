@@ -364,11 +364,13 @@
     @else
         <header class="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-slate-950 to-blue-900 px-5 py-6 text-white sm:px-7">
             <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-blue-200">Sistema ISP / Clientes y red</p>
+                <p class="text-xs font-bold uppercase tracking-wider text-blue-200">ULTRA / Clientes y red</p>
                 <h1 class="mt-2 text-2xl font-bold">Servicios de Internet</h1>
                 <p class="mt-1 text-sm text-blue-100/80">Centro técnico de conexiones, velocidades, instalaciones y estados.</p>
             </div>
-            <button type="button" wire:click="nuevo" class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-500">+ Nueva conexión</button>
+            @if(\App\Support\IspAccess::allows(auth()->user(), 'servicios.create'))
+<button type="button" wire:click="nuevo" class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-500">+ Nueva conexión</button>
+@endif
         </header>
 
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -465,11 +467,17 @@
                                 </td>
                                 <td class="px-4 py-3">
                                     <div class="flex flex-wrap justify-end gap-2">
-                                        <button type="button" wire:click="editar({{ $servicio->id }})" class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700">Configurar</button>
+                                        @if(\App\Support\IspAccess::allows(auth()->user(), 'servicios.edit'))
+<button type="button" wire:click="editar({{ $servicio->id }})" class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700">Configurar</button>
+@endif
                                         @if ($servicio->cliente)
-                                            <a href="{{ route('clientes.show', $servicio->cliente_id) }}" class="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-semibold dark:border-zinc-700">Ficha</a>
+                                            @if(\App\Support\IspAccess::allows(auth()->user(), 'clientes.view'))
+<a href="{{ route('clientes.show', $servicio->cliente_id) }}" class="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-semibold dark:border-zinc-700">Ficha</a>
+@endif
                                         @endif
-                                        <button type="button" wire:click="abrirCambioTarifa({{ $servicio->id }})" title="Historial tarifario (acción separada de la configuración técnica)" class="rounded-lg px-2 py-2 text-xs font-semibold text-zinc-500 underline decoration-dotted hover:text-blue-500">Tarifa</button>
+                                        @if(\App\Support\IspAccess::allows(auth()->user(), 'tarifas.manage'))
+<button type="button" wire:click="abrirCambioTarifa({{ $servicio->id }})" title="Historial tarifario (acción separada de la configuración técnica)" class="rounded-lg px-2 py-2 text-xs font-semibold text-zinc-500 underline decoration-dotted hover:text-blue-500">Tarifa</button>
+@endif
                                     </div>
                                 </td>
                             </tr>

@@ -26,11 +26,7 @@
                     <div class="min-w-0">
                         <p class="truncate text-base font-extrabold
                                 tracking-wide text-zinc-900 dark:text-white">
-                            SISTEMA ISP
-                        </p>
-
-                        <p class="text-xs text-zinc-500 dark:text-slate-400">
-                            Panel administrativo
+                            ULTRA
                         </p>
                     </div>
 
@@ -58,30 +54,37 @@
                 </flux:sidebar.group>
 
                 <flux:sidebar.group heading="CLIENTES Y RED" class="grid">
-                    <flux:sidebar.item
+                    @if(\App\Support\IspAccess::allows(auth()->user(), 'clientes.view'))
+<flux:sidebar.item
                         icon="users"
                         :href="route('clientes.index')"
                         :current="request()->routeIs('clientes.*')"
                         wire:navigate>
                         Clientes
                     </flux:sidebar.item>
+                    @endif
 
-                    <flux:sidebar.item
+                    @if(\App\Support\IspAccess::allows(auth()->user(), 'servicios.view'))
+<flux:sidebar.item
                         icon="wifi"
                         :href="route('servicios.index')"
                         :current="request()->routeIs('servicios.*')"
                         wire:navigate>
                         Servicios de Internet
                     </flux:sidebar.item>
+                    @endif
 
-                    <flux:sidebar.item
+                    @if(\App\Support\IspAccess::allows(auth()->user(), 'nap.view'))
+<flux:sidebar.item
                         icon="server-stack"
                         :href="route('nap.index')"
                         :current="request()->routeIs('nap.*')"
                         wire:navigate>
                         Cajas NAP
                     </flux:sidebar.item>
+                    @endif
                 </flux:sidebar.group>
+                @if(\App\Support\IspAccess::allows(auth()->user(), 'cobranza.view'))
 
                 <flux:sidebar.group heading="FACTURACIÓN Y COBROS" class="grid">
                     <flux:sidebar.item
@@ -92,6 +95,8 @@
                     </flux:sidebar.item>
 
                 </flux:sidebar.group>
+                @endif
+                @if(\App\Support\IspAccess::allows(auth()->user(), 'finanzas.cobros'))
 
                 <flux:sidebar.group heading="ADMINISTRACIÓN" class="grid">
                     <flux:sidebar.item
@@ -101,7 +106,15 @@
                         Finanzas
                     </flux:sidebar.item>
                 </flux:sidebar.group>
+                @endif
 
+                @if(\App\Support\IspAccess::allows(auth()->user(), 'usuarios.manage'))
+                <flux:sidebar.group heading="SEGURIDAD" class="grid">
+                    <flux:sidebar.item icon="shield-check" :href="route('usuarios.index')" :current="request()->routeIs('usuarios.*')" wire:navigate>
+                        Usuarios y permisos
+                    </flux:sidebar.item>
+                </flux:sidebar.group>
+                @endif
             </flux:sidebar.nav>
 
 
@@ -109,32 +122,6 @@
 
 
             <flux:sidebar.nav>
-
-                <!-- ESTADO DEL SISTEMA -->
-                <div class="mx-2 mb-4 rounded-2xl
-                            bg-gradient-to-r from-blue-700 to-indigo-700
-                            p-4 text-white">
-
-                    <div class="flex items-center gap-2">
-
-                        <span class="size-2 rounded-full
-                                    bg-emerald-400"></span>
-
-                        <span class="text-xs font-semibold">
-                            SISTEMA ISP LOCAL
-                        </span>
-
-                    </div>
-
-                    <p class="mt-2 text-xs text-blue-100">
-                        Panel administrativo en desarrollo.
-                    </p>
-
-                    <p class="mt-2 text-xs text-blue-200">
-                        Laravel · Livewire · MySQL
-                    </p>
-
-                </div>
 
                 <flux:sidebar.item
                     icon="cog-6-tooth"

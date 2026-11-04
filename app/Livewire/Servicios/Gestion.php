@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Auth;
 
 class Gestion extends Component
 {
+    public function boot(): void { \App\Support\IspAccess::enforce('servicios.view'); }
+
     use WithPagination;
 
     // La lista es la pantalla de inicio; los formularios se abren solo al usarlos.
@@ -52,6 +54,8 @@ class Gestion extends Component
     
     public function nuevo(): void
     {
+        \App\Support\IspAccess::enforce('servicios.create');
+
         $this->cancelarEdicion();
         $this->cerrarCambioTarifa();
         $this->modoPantalla = 'formulario';
@@ -92,6 +96,8 @@ class Gestion extends Component
 
     public function abrirCambioTarifa(int $id): void
     {
+        \App\Support\IspAccess::enforce('tarifas.manage');
+
         // Comprobar que el servicio existe
         $servicio = Servicio::findOrFail($id);
 
@@ -124,6 +130,8 @@ class Gestion extends Component
     
     public function guardarCambioTarifa(): void
     {
+        \App\Support\IspAccess::enforce('tarifas.manage');
+
         if ($this->servicioTarifaId === null) {
             $this->addError(
                 'nuevoMonto',
@@ -234,6 +242,8 @@ class Gestion extends Component
     
     public function editar(int $id): void
     {
+        \App\Support\IspAccess::enforce('servicios.edit');
+
         $servicio = Servicio::with('cliente')->findOrFail($id);
 
         $this->clienteIdentificacion = trim(($servicio->cliente?->codigo ?? '') . ' - ' . ($servicio->cliente?->nombre ?? 'Cliente no disponible'));
@@ -269,6 +279,8 @@ class Gestion extends Component
 
     public function guardar(): void
     {
+        \App\Support\IspAccess::enforce($this->servicioEditandoId === null ? 'servicios.create' : 'servicios.edit');
+
         if ($this->servicioTarifaId !== null) {
             $this->addError(
                 'nuevoMonto',

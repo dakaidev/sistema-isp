@@ -2,7 +2,7 @@
     <section class="rounded-3xl bg-gradient-to-br from-slate-950 via-blue-950 to-blue-800 px-6 py-8 text-white md:px-9">
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
-                <span class="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-bold tracking-wide text-blue-100">SISTEMA ISP · FINANZAS</span>
+                <span class="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-bold tracking-wide text-blue-100">ULTRA · FINANZAS</span>
                 <h1 class="mt-4 text-3xl font-extrabold tracking-tight">Ingresos, gastos y resultado</h1>
                 <p class="mt-2 max-w-2xl text-sm leading-relaxed text-blue-100">Un solo resumen mensual de los importes registrados, recuperando los años anteriores. Los cruces sin conciliar se señalan para revisión.</p>
             </div>

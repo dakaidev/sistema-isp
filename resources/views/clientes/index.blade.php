@@ -1,5 +1,5 @@
 
-<x-layouts::app :title="'Clientes | Sistema ISP'">
+<x-layouts::app :title="'Clientes'">
 
     <livewire:clientes.gestion />
 

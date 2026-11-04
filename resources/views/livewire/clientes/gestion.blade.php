@@ -278,13 +278,15 @@
         <!-- Vista principal: lista y filtros primero. -->
         <div class="flex flex-col gap-4 rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-blue-900 px-5 py-6 text-white sm:flex-row sm:items-center sm:justify-between sm:px-7">
             <div>
-                <p class="text-[11px] font-bold uppercase tracking-widest text-blue-200">Sistema ISP · Administración</p>
+                <p class="text-[11px] font-bold uppercase tracking-widest text-blue-200">ULTRA · Administración</p>
                 <h1 class="mt-2 text-2xl font-bold sm:text-3xl">Gestión de Clientes</h1>
                 <p class="mt-1 text-sm text-blue-100/80">Busca, filtra y administra tus abonados desde un solo lugar.</p>
             </div>
-            <a href="{{ route('clientes.nuevo') }}" wire:navigate class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-950/30 transition hover:bg-blue-500">
+            @if(\App\Support\IspAccess::allows(auth()->user(), 'clientes.edit'))
+<a href="{{ route('clientes.nuevo') }}" wire:navigate class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-950/30 transition hover:bg-blue-500">
                 <span class="text-lg leading-none">+</span> Nuevo cliente
             </a>
+@endif
         </div>
 
         <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -443,8 +445,12 @@
                                         <details class="relative text-left">
                                             <summary aria-label="Más acciones para {{ $cliente->nombre }}" class="cursor-pointer list-none rounded-lg border border-zinc-300 px-3 py-2 text-xs font-bold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">···</summary>
                                             <div class="absolute right-0 z-30 mt-1 w-44 rounded-xl border border-zinc-200 bg-white p-1 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
-                                                <a href="{{ route('clientes.editar', $cliente->id) }}" wire:navigate class="block rounded-lg px-3 py-2 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800">Editar datos</a>
-                                                <button type="button" wire:click="abrirPerfil({{ $cliente->id }})" class="block w-full rounded-lg px-3 py-2 text-left text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800">Configurar facturación y servicio</button>
+                                                @if(\App\Support\IspAccess::allows(auth()->user(), 'clientes.edit'))
+<a href="{{ route('clientes.editar', $cliente->id) }}" wire:navigate class="block rounded-lg px-3 py-2 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800">Editar datos</a>
+@endif
+                                                @if(\App\Support\IspAccess::allows(auth()->user(), 'clientes.edit'))
+<button type="button" wire:click="abrirPerfil({{ $cliente->id }})" class="block w-full rounded-lg px-3 py-2 text-left text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800">Configurar facturación y servicio</button>
+@endif
                                             </div>
                                         </details>
                                     </div>

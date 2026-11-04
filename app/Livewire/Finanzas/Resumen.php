@@ -12,6 +12,8 @@ use Livewire\WithPagination;
 
 class Resumen extends Component
 {
+    public function boot(): void { \App\Support\IspAccess::enforce('finanzas.view'); }
+
     use WithPagination;
 
     public string $anio = '2026';

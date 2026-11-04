@@ -6,3 +6,6 @@ use Illuminate\Support\Facades\Artisan;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// Registrar el programador de mensualidades ISP (requiere scheduler en ejecución).
+require __DIR__.'/cobranza_isp_schedule.php';

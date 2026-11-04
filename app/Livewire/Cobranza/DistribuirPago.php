@@ -10,6 +10,8 @@ use Livewire\Component;
 /** Destino del pago ≠ fecha del ingreso. No genera ingresos nuevos. */
 class DistribuirPago extends Component
 {
+    public function boot(): void { \App\Support\IspAccess::enforce('cobranza.view'); }
+
     public int $pagoId;
     public string $periodo = '';
     public string $monto = '';
@@ -24,6 +26,8 @@ class DistribuirPago extends Component
 
     public function guardar(): void
     {
+        \App\Support\IspAccess::enforce('cobranza.pay');
+
         $datos = $this->validate([
             'periodo' => ['required', 'date_format:Y-m'],
             'monto' => ['required', 'numeric', 'decimal:0,2', 'between:0.01,99999999.99'],
@@ -94,6 +98,8 @@ class DistribuirPago extends Component
      */
     public function conciliarReparto(int $repartoId, int $cargoId): void
     {
+        \App\Support\IspAccess::enforce('cobranza.adjust');
+
         DB::transaction(function () use ($repartoId, $cargoId) {
             $pago = DB::table('isp_pagos')->where('id', $this->pagoId)->first();
             abort_unless($pago && $pago->categoria === 'internet', 404);

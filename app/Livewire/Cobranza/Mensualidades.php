@@ -10,6 +10,8 @@ use Livewire\WithPagination;
 
 class Mensualidades extends Component
 {
+    public function boot(): void { \App\Support\IspAccess::enforce('facturacion.manage'); }
+
     use WithPagination;
 
     public string $buscar = '';

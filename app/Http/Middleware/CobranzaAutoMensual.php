@@ -14,6 +14,8 @@ class CobranzaAutoMensual
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if (!\App\Support\IspAccess::allows(auth()->user(), 'cobranza.pay')) return $next($request);
+
         // Solo al consultar la página, nunca al previsualizar o guardar formularios.
         if ($request->isMethod('GET') &&
             DB::table('isp_mensualidades_generadas')->exists() &&
@@ -23,7 +25,7 @@ class CobranzaAutoMensual
             } catch (\Throwable $e) {
                 Log::error('Fallo al generar mensualidades ISP al abrir Cobranza', ['exception' => $e]);
                 session()->flash('advertencia_facturacion',
-                    'No se pudieron actualizar las mensualidades automáticas. Ejecuta la simulación en Mensualidades y revisa el log.');
+                    'No se pudieron generar las mensualidades automáticas. Revisa el registro de errores de Laravel antes de continuar con la cobranza.');
             }
         }
         return $next($request);

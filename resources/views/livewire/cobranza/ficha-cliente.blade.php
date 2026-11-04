@@ -2,7 +2,7 @@
     <div class="rounded-3xl bg-gradient-to-r from-slate-950 via-blue-950 to-blue-800 p-7 text-white shadow-sm">
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
-                <p class="text-xs font-bold uppercase tracking-widest text-blue-200">Sistema ISP / Ficha de cobranza</p>
+                <p class="text-xs font-bold uppercase tracking-widest text-blue-200">ULTRA / Ficha de cobranza</p>
                 <h1 class="mt-3 text-3xl font-extrabold">{{ $cliente->nombre }}</h1>
                 <p class="mt-2 text-sm text-blue-100">{{ $cliente->codigo }} · {{ $cliente->telefono ?: 'Sin celular registrado' }}</p>
             </div>
@@ -53,8 +53,14 @@
                 <p class="mt-1 text-sm text-zinc-400">Selecciona una acción. Solo se guardan cambios cuando pulses Confirmar o Guardar.</p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <button type="button" wire:click="abrir('tarifa')" class="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-600">Editar mensualidad</button>
-                <button type="button" wire:click="abrir('pago')" class="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-600">Registrar pago nuevo</button>\n                <a href="{{ route('cobranza.adelantos', ['cliente' => $cliente->id]) }}" class="rounded-xl border border-blue-500 px-4 py-2.5 text-sm font-bold text-blue-200 hover:bg-blue-950">Pago de varios meses / adelantado</a>
+                @if(\App\Support\IspAccess::allows(auth()->user(), 'tarifas.manage'))
+<button type="button" wire:click="abrir('tarifa')" class="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-600">Editar mensualidad</button>
+@endif
+                @if(\App\Support\IspAccess::allows(auth()->user(), 'cobranza.pay'))
+<button type="button" wire:click="abrir('pago')" class="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-600">Registrar pago nuevo</button>
+@endif\n                @if(\App\Support\IspAccess::allows(auth()->user(), 'cobranza.pay'))
+<a href="{{ route('cobranza.adelantos', ['cliente' => $cliente->id]) }}" class="rounded-xl border border-blue-500 px-4 py-2.5 text-sm font-bold text-blue-200 hover:bg-blue-950">Pago de varios meses / adelantado</a>
+@endif
             </div>
         </div>
 
@@ -314,10 +320,12 @@
                             <span class="font-bold {{ $item['pendiente'] > 0 ? 'text-amber-400' : 'text-emerald-400' }}">Pendiente S/ {{ number_format($item['pendiente'],2) }}</span>
                         </div>
                         @if ($item['pendiente'] > 0 && in_array($cargo->tipo, ['cargo_manual', 'mensualidad_automatica'], true) && $cargo->categoria === 'internet')
-                            <button type="button" wire:click="abrirCorreccionCargo({{ $cargo->id }})"
+                            @if(\App\Support\IspAccess::allows(auth()->user(), 'cobranza.adjust'))
+<button type="button" wire:click="abrirCorreccionCargo({{ $cargo->id }})"
                                 class="mt-3 rounded-lg border border-blue-500/50 px-3 py-2 text-xs font-semibold text-blue-300 hover:bg-blue-950/40">
                                 Corregir importe y motivo
                             </button>
+@endif
                         @endif
                         @foreach ($historialCorrecciones->get($cargo->id, collect()) as $ajuste)
                             <div class="mt-2 border-t border-zinc-800 pt-2 text-xs text-zinc-400">

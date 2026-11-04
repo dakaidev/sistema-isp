@@ -14,6 +14,8 @@ use Livewire\WithPagination;
 
 class Gestion extends Component
 {
+    public function boot(): void { \App\Support\IspAccess::enforce('nap.view'); }
+
     use WithPagination;
 
     public string $buscar = '';
@@ -49,6 +51,8 @@ class Gestion extends Component
 
     public function nuevaCaja(): void
     {
+        \App\Support\IspAccess::enforce('nap.edit');
+
         $this->reset(['cajaEditandoId', 'codigo', 'ubicacionGps', 'referencia', 'observaciones']);
         $this->sede = $this->filtroSede === 'calasuca' ? 'calasuca' : 'upina';
         $this->capacidad = '8';
@@ -58,6 +62,8 @@ class Gestion extends Component
 
     public function editarCaja(int $id): void
     {
+        \App\Support\IspAccess::enforce('nap.edit');
+
         $caja = CajaNap::findOrFail($id);
         $this->cajaEditandoId = $caja->id;
         $this->sede = $caja->sede;
@@ -95,6 +101,8 @@ class Gestion extends Component
 
     public function guardarCaja(): void
     {
+        \App\Support\IspAccess::enforce('nap.edit');
+
         $this->codigo = trim($this->codigo);
         $this->referencia = trim($this->referencia);
         $this->observaciones = trim($this->observaciones);
@@ -197,6 +205,8 @@ class Gestion extends Component
 
     public function abrirPuerto(int $id): void
     {
+        \App\Support\IspAccess::enforce('nap.edit');
+
         $puerto = PuertoNap::where('caja_nap_id', $this->cajaSeleccionadaId)->findOrFail($id);
         $this->puertoEditandoId = $puerto->id;
         $this->estadoPuerto = $puerto->estado;
@@ -214,6 +224,8 @@ class Gestion extends Component
 
     public function guardarPuerto(): void
     {
+        \App\Support\IspAccess::enforce('nap.edit');
+
         $this->observacionesPuerto = trim($this->observacionesPuerto);
         $datos = $this->validate([
             'estadoPuerto' => ['required', Rule::in(self::ESTADOS_PUERTO)],

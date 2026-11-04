@@ -1,5 +1,5 @@
 
-<x-layouts::app :title="'Servicios | Sistema ISP'">
+<x-layouts::app :title="'Servicios'">
 
     <livewire:servicios.gestion />
 

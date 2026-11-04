@@ -11,6 +11,8 @@ use Livewire\WithPagination;
 
 class Gestion extends Component
 {
+    public function boot(): void { \App\Support\IspAccess::enforce('cobranza.view'); }
+
     use WithPagination;
 
     public string $buscar = '';
@@ -69,6 +71,9 @@ class Gestion extends Component
 
     public function abrir(int $clienteId, string $accion): void
     {
+        if ($accion === 'cargo') \App\Support\IspAccess::enforce('cobranza.adjust');
+        if ($accion === 'pago') \App\Support\IspAccess::enforce('cobranza.pay');
+
         if (!in_array($accion, ['cargo', 'pago', 'historial'], true)) {
             abort(400, 'Acción no permitida.');
         }
@@ -105,6 +110,8 @@ class Gestion extends Component
 
     public function guardarCargo(): void
     {
+        \App\Support\IspAccess::enforce('cobranza.adjust');
+
         if ($this->accion !== 'cargo' || $this->clienteSeleccionado === null) {
             abort(400);
         }
@@ -135,6 +142,8 @@ class Gestion extends Component
 
     public function guardarPago(): void
     {
+        \App\Support\IspAccess::enforce('cobranza.pay');
+
         if ($this->accion !== 'pago' || $this->clienteSeleccionado === null) {
             abort(400);
         }

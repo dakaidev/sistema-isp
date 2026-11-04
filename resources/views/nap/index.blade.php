@@ -1,3 +1,3 @@
-<x-layouts::app :title="'Cajas NAP | Sistema ISP'">
+<x-layouts::app :title="'Cajas NAP'">
     <livewire:nap.gestion />
 </x-layouts::app>
