@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Services\Cobranza\GeneradorMensualidades;
+use App\Support\IspAccess;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,9 @@ class CobranzaAutoMensual
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (!\App\Support\IspAccess::allows(auth()->user(), 'cobranza.pay')) return $next($request);
+        if (! IspAccess::allows(auth()->user(), 'cobranza.pay')) {
+            return $next($request);
+        }
 
         // Solo al consultar la página, nunca al previsualizar o guardar formularios.
         if ($request->isMethod('GET') &&
@@ -28,6 +31,7 @@ class CobranzaAutoMensual
                     'No se pudieron generar las mensualidades automáticas. Revisa el registro de errores de Laravel antes de continuar con la cobranza.');
             }
         }
+
         return $next($request);
     }
 }

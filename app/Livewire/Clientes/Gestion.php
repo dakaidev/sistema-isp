@@ -6,17 +6,21 @@ use App\Models\Cliente;
 use App\Models\Servicio;
 use App\Models\Tarifa;
 use App\Services\Cobranza\GeneradorMensualidades;
+use App\Support\IspAccess;
 use App\Support\PlanesInternet;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 class Gestion extends Component
 {
-    public function boot(): void { \App\Support\IspAccess::enforce('clientes.view'); }
+    public function boot(): void
+    {
+        IspAccess::enforce('clientes.view');
+    }
 
     use WithPagination;
 
@@ -25,46 +29,71 @@ class Gestion extends Component
 
     // La lista y el formulario se muestran en paginas distintas.
     public string $modoPantalla = 'lista';
+
     public bool $mostrarFiltrosAvanzados = false;
 
     // Formulario
     public string $codigo = '';
+
     public string $nombre = '';
+
     public string $documento = '';
+
     public string $telefono = '';
+
     public string $sector = '';
+
     // Upina y Calasuca son sedes con servidores independientes.
     public string $sede = '';
+
     // Un solo campo visual, dos columnas GPS conservadas en MySQL.
     public string $ubicacionGps = '';
+
     public string $direccion = '';
+
     public string $fechaInstalacion = '';
+
     public string $fechaBaja = '';
+
     public string $observaciones = '';
 
     // Perfil unificado: la facturacion usa siempre isp_configuracion_mensual.
     public ?int $perfilClienteId = null;
+
     public string $perfilClienteNombre = '';
+
     public string $perfilTarifa = '';
+
     public string $perfilInicio = '';
+
     public bool $perfilHabilitado = false;
+
     public string $perfilAvisoFacturacion = '';
+
     public string $perfilSede = '';
 
     // Informacion tecnica opcional: NO habilita facturacion por si sola.
     public ?int $perfilServicioId = null;
+
     public int $perfilCantidadServicios = 0;
+
     public string $perfilTipoConexion = 'fibra';
+
     public string $perfilPlan = '';
+
     public string $perfilPlanElegido = 'personalizado';
+
     public string $perfilVelocidad = '';
+
     public string $perfilFechaActivacion = '';
+
     public string $perfilEstado = 'activo';
 
     public function mount(): void
     {
         if (request()->routeIs('clientes.nuevo')) {
             $this->modoPantalla = 'formulario';
+
             return;
         }
 
@@ -73,6 +102,7 @@ class Gestion extends Component
             $cliente = request()->route('cliente');
             abort_unless(is_scalar($cliente) && ctype_digit((string) $cliente), 404);
             $this->editar((int) $cliente);
+
             return;
         }
 
@@ -84,28 +114,60 @@ class Gestion extends Component
 
     // Buscador
     public string $buscar = '';
+
     public string $filtroSede = 'todos';
 
     // Filtros combinables: sede, estado administrativo, facturacion y plan.
     // Cambiar un filtro no altera los datos ni aplica cortes al servidor.
     public string $filtroEstadoConexion = 'todos';
+
     public string $filtroFacturacion = 'todos';
+
     public string $filtroPlan = 'todos';
+
     public string $filtroDeuda = 'todos';
+
     public string $filtroRevision = 'todos';
 
-    public function updatedFiltroSede(): void { $this->resetPage(); }
-    public function updatedFiltroEstadoConexion(): void { $this->resetPage(); }
-    public function updatedFiltroFacturacion(): void { $this->resetPage(); }
-    public function updatedFiltroPlan(): void { $this->resetPage(); }
-    public function updatedFiltroDeuda(): void { $this->resetPage(); }
-    public function updatedFiltroRevision(): void { $this->resetPage(); }
+    public function updatedFiltroSede(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFiltroEstadoConexion(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFiltroFacturacion(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFiltroPlan(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFiltroDeuda(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFiltroRevision(): void
+    {
+        $this->resetPage();
+    }
 
     public function alternarFiltrosAvanzados(): void
     {
         $this->mostrarFiltrosAvanzados = ! $this->mostrarFiltrosAvanzados;
     }
-    public function updatedBuscar(): void { $this->resetPage(); }
+
+    public function updatedBuscar(): void
+    {
+        $this->resetPage();
+    }
 
     public function limpiarFiltros(): void
     {
@@ -122,7 +184,7 @@ class Gestion extends Component
     // Cargar los datos de un cliente en el formulario
     public function editar(int $id): void
     {
-        \App\Support\IspAccess::enforce('clientes.edit');
+        IspAccess::enforce('clientes.edit');
 
         $cliente = Cliente::findOrFail($id);
 
@@ -134,7 +196,7 @@ class Gestion extends Component
         $this->sector = $cliente->sector ?? '';
         $this->sede = $cliente->sede ?? '';
         $this->ubicacionGps = $cliente->latitud !== null && $cliente->longitud !== null
-            ? (string) $cliente->latitud . ', ' . (string) $cliente->longitud
+            ? (string) $cliente->latitud.', '.(string) $cliente->longitud
             : '';
         $this->direccion = $cliente->direccion ?? '';
         $this->fechaInstalacion = $cliente->fecha_instalacion?->format('Y-m-d') ?? '';
@@ -147,7 +209,7 @@ class Gestion extends Component
     // Guardar un cliente nuevo o actualizar uno existente
     public function guardar(): void
     {
-        \App\Support\IspAccess::enforce('clientes.edit');
+        IspAccess::enforce('clientes.edit');
 
         $this->codigo = strtoupper(trim($this->codigo));
         $this->nombre = trim($this->nombre);
@@ -213,7 +275,7 @@ class Gestion extends Component
         } else {
             // Formato exacto de Google Maps: latitud, longitud.
             // El decimal se escribe con punto; la coma separa ambos valores.
-            if (!preg_match('/\A([+-]?\d{1,2}(?:\.\d{1,7})?)\s*,\s*([+-]?\d{1,3}(?:\.\d{1,7})?)\z/', $gps, $partes)
+            if (! preg_match('/\A([+-]?\d{1,2}(?:\.\d{1,7})?)\s*,\s*([+-]?\d{1,3}(?:\.\d{1,7})?)\z/', $gps, $partes)
                 || (float) ($partes[1] ?? 0) < -90 || (float) ($partes[1] ?? 0) > 90
                 || (float) ($partes[2] ?? 0) < -180 || (float) ($partes[2] ?? 0) > 180) {
                 throw ValidationException::withMessages([
@@ -235,6 +297,7 @@ class Gestion extends Component
         if ($this->modoPantalla === 'formulario') {
             session()->flash('mensaje', $mensaje);
             $this->redirect(route('clientes.index', ['cliente' => $cliente->id]), navigate: true);
+
             return;
         }
 
@@ -275,7 +338,7 @@ class Gestion extends Component
         $servicio = $servicios->first();
 
         $this->perfilClienteId = $id;
-        $this->perfilClienteNombre = $cliente->codigo . ' - ' . $cliente->nombre;
+        $this->perfilClienteNombre = $cliente->codigo.' - '.$cliente->nombre;
         $this->perfilTarifa = $cfg && $cfg->tarifa_mensual !== null ? (string) $cfg->tarifa_mensual : '';
         $this->perfilInicio = $cfg?->inicio_cobro ?: today('America/Lima')->startOfMonth()->toDateString();
         $this->perfilHabilitado = $cfg ? (bool) $cfg->habilitado : false;
@@ -309,9 +372,11 @@ class Gestion extends Component
     // No genera servicios, mensualidades, cargos ni pagos.
     public function guardarSede(): void
     {
-        \App\Support\IspAccess::enforce('clientes.edit');
+        IspAccess::enforce('clientes.edit');
 
-        if ($this->perfilClienteId === null) abort(400);
+        if ($this->perfilClienteId === null) {
+            abort(400);
+        }
 
         $datos = $this->validate([
             'perfilSede' => ['required', Rule::in(['upina', 'calasuca'])],
@@ -330,9 +395,11 @@ class Gestion extends Component
 
     public function guardarFacturacion(): void
     {
-        \App\Support\IspAccess::enforce('clientes.edit');
+        IspAccess::enforce('clientes.edit');
 
-        if ($this->perfilClienteId === null) abort(400);
+        if ($this->perfilClienteId === null) {
+            abort(400);
+        }
 
         $datos = $this->validate([
             'perfilTarifa' => ['required', 'numeric', 'decimal:0,2', 'between:0.01,99999999.99'],
@@ -373,9 +440,9 @@ class Gestion extends Component
 
         $mes = today('America/Lima')->locale('es')->translatedFormat('F Y');
         $mensaje = match ($resultado['estado'] ?? 'deshabilitada') {
-            'creado' => 'Facturacion guardada. Mensualidad de ' . $mes . ' generada por S/ ' . $resultado['monto'] . '. Los adelantos de este mes se aplican si corresponden.',
-            'existente' => 'Facturacion guardada. La mensualidad de ' . $mes . ' ya existia: no se duplico ni se cambio su importe.',
-            'no_corresponde' => 'Facturacion guardada. Aun no corresponde crear mensualidad en ' . $mes . ' segun la fecha de inicio.',
+            'creado' => 'Facturacion guardada. Mensualidad de '.$mes.' generada por S/ '.$resultado['monto'].'. Los adelantos de este mes se aplican si corresponden.',
+            'existente' => 'Facturacion guardada. La mensualidad de '.$mes.' ya existia: no se duplico ni se cambio su importe.',
+            'no_corresponde' => 'Facturacion guardada. Aun no corresponde crear mensualidad en '.$mes.' segun la fecha de inicio.',
             'sin_facturacion' => 'Facturacion guardada. No corresponde generar un cargo con la configuracion actual.',
             default => 'Facturacion guardada con el cobro deshabilitado. No se genero mensualidad.',
         };
@@ -400,7 +467,9 @@ class Gestion extends Component
     // El usuario debe pulsar "Guardar facturacion" para persistirlo.
     public function proponerTarifaPlan(): void
     {
-        if ($this->perfilClienteId === null) abort(400);
+        if ($this->perfilClienteId === null) {
+            abort(400);
+        }
         $plan = PlanesInternet::CATALOGO[$this->perfilPlanElegido] ?? null;
         if ($plan === null) {
             throw ValidationException::withMessages(['perfilPlanElegido' => 'Elige uno de los planes sugeridos.']);
@@ -410,9 +479,11 @@ class Gestion extends Component
 
     public function guardarConexion(): void
     {
-        \App\Support\IspAccess::enforce('clientes.edit');
+        IspAccess::enforce('clientes.edit');
 
-        if ($this->perfilClienteId === null) abort(400);
+        if ($this->perfilClienteId === null) {
+            abort(400);
+        }
         if ($this->perfilCantidadServicios > 1) {
             throw ValidationException::withMessages(['perfilTipoConexion' => 'Este cliente tiene varias conexiones. Revisalas individualmente en Servicios de Internet.']);
         }
@@ -451,7 +522,7 @@ class Gestion extends Component
                 $servicio->update($campos);
             } else {
                 $cfg = DB::table('isp_configuracion_mensual')->where('cliente_id', $this->perfilClienteId)->first();
-                if (!$cfg || (float) $cfg->tarifa_mensual <= 0) {
+                if (! $cfg || (float) $cfg->tarifa_mensual <= 0) {
                     throw ValidationException::withMessages(['perfilTipoConexion' => 'Primero guarda la tarifa de facturacion de este cliente.']);
                 }
                 $servicio = Servicio::create($campos + [
@@ -551,10 +622,10 @@ class Gestion extends Component
                 $texto = trim($this->buscar);
                 $query->where(function ($q) use ($texto) {
                     $q->where('clientes.codigo', 'like', "%{$texto}%")
-                      ->orWhere('clientes.nombre', 'like', "%{$texto}%")
-                      ->orWhere('clientes.telefono', 'like', "%{$texto}%")
-                      ->orWhere('clientes.direccion', 'like', "%{$texto}%")
-                      ->orWhere('clientes.documento', 'like', "%{$texto}%");
+                        ->orWhere('clientes.nombre', 'like', "%{$texto}%")
+                        ->orWhere('clientes.telefono', 'like', "%{$texto}%")
+                        ->orWhere('clientes.direccion', 'like', "%{$texto}%")
+                        ->orWhere('clientes.documento', 'like', "%{$texto}%");
                 });
             })
             ->orderByDesc('clientes.id')
@@ -581,8 +652,8 @@ class Gestion extends Component
             ->leftJoin('servicios as estado_svc', 'estado_svc.id', '=', 'ultimo_estado.ultimo_id')
             ->selectRaw("SUM(CASE WHEN clientes.fecha_baja IS NULL AND estado_svc.estado = 'activo' THEN 1 ELSE 0 END) as activos")
             ->selectRaw("SUM(CASE WHEN clientes.fecha_baja IS NULL AND estado_svc.estado = 'suspendido' THEN 1 ELSE 0 END) as suspendidos")
-            ->selectRaw("SUM(CASE WHEN clientes.fecha_baja IS NOT NULL THEN 1 ELSE 0 END) as bajas")
-            ->selectRaw("SUM(CASE WHEN clientes.fecha_baja IS NULL AND estado_svc.id IS NULL THEN 1 ELSE 0 END) as sin_registro")
+            ->selectRaw('SUM(CASE WHEN clientes.fecha_baja IS NOT NULL THEN 1 ELSE 0 END) as bajas')
+            ->selectRaw('SUM(CASE WHEN clientes.fecha_baja IS NULL AND estado_svc.id IS NULL THEN 1 ELSE 0 END) as sin_registro')
             ->first();
 
         return view('livewire.clientes.gestion', [

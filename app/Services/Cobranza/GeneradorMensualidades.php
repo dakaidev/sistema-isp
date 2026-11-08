@@ -11,11 +11,11 @@ class GeneradorMensualidades
 {
     public function ejecutar(string $mes, bool $aplicar = false): array
     {
-        if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/D', $mes)) {
+        if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])$/D', $mes)) {
             throw new InvalidArgumentException('Escribe el mes como AAAA-MM, por ejemplo 2026-10.');
         }
 
-        $inicio = CarbonImmutable::parse($mes . '-01', 'America/Lima')->startOfMonth();
+        $inicio = CarbonImmutable::parse($mes.'-01', 'America/Lima')->startOfMonth();
         $hoy = CarbonImmutable::now('America/Lima')->startOfDay();
         if ($inicio->greaterThan($hoy)) {
             throw new InvalidArgumentException('No se pueden emitir cargos de meses futuros.');
@@ -30,30 +30,34 @@ class GeneradorMensualidades
             ->whereDate('inicio_cobro', '<=', $inicio->endOfMonth()->toDateString())
             ->chunkById(100, function ($planes) use ($inicio, $aplicar, &$resumen, &$totalCentavos) {
                 foreach ($planes as $plan) {
-                    ++$resumen['habilitados'];
+                    $resumen['habilitados']++;
                     // Simulación no inserta registros y es segura para repetir.
-                    if (!$aplicar) {
+                    if (! $aplicar) {
                         $yaExiste = DB::table('isp_mensualidades_generadas')
                             ->where('cliente_id', $plan->cliente_id)->where('periodo', $inicio->toDateString())->exists();
-                        if ($yaExiste) ++$resumen['existentes'];
-                        else {
-                            ++$resumen['nuevos'];
+                        if ($yaExiste) {
+                            $resumen['existentes']++;
+                        } else {
+                            $resumen['nuevos']++;
                             $totalCentavos += $this->montoProrrateado($plan, $inicio);
                         }
+
                         continue;
                     }
                     // La generacion masiva y la individual usan exactamente la misma regla.
                     $resultado = $this->generarCargoParaCliente((int) $plan->cliente_id, $inicio);
                     if ($resultado['estado'] === 'creado') {
-                        ++$resumen['nuevos'];
+                        $resumen['nuevos']++;
                         $totalCentavos += $resultado['centavos'];
-                    } else ++$resumen['existentes'];
+                    } else {
+                        ++$resumen['existentes'];
+                    }
                 }
             });
         $resumen['total'] = $this->dinero($totalCentavos);
+
         return $resumen;
     }
-
 
     /**
      * Crear unicamente la mensualidad del cliente cuya facturacion se acaba de guardar.
@@ -68,6 +72,7 @@ class GeneradorMensualidades
 
         $inicio = CarbonImmutable::now('America/Lima')->startOfMonth();
         $resultado = $this->generarCargoParaCliente($clienteId, $inicio);
+
         return [
             'estado' => $resultado['estado'],
             'mes' => $inicio->format('Y-m'),
@@ -85,7 +90,7 @@ class GeneradorMensualidades
             DB::table('clientes')->where('id', $clienteId)->lockForUpdate()->firstOrFail();
             $actual = DB::table('isp_configuracion_mensual')
                 ->where('cliente_id', $clienteId)->lockForUpdate()->first();
-            if (!$actual || !$actual->habilitado || !$actual->tarifa_mensual || (float) $actual->tarifa_mensual <= 0) {
+            if (! $actual || ! $actual->habilitado || ! $actual->tarifa_mensual || (float) $actual->tarifa_mensual <= 0) {
                 return ['estado' => 'sin_facturacion', 'centavos' => 0];
             }
             if ($actual->inicio_cobro > $inicio->endOfMonth()->toDateString()) {
@@ -111,7 +116,7 @@ class GeneradorMensualidades
                 'servicio_id' => null,
                 'tipo' => 'mensualidad_automatica',
                 'categoria' => 'internet',
-                'descripcion' => 'Internet ' . $inicio->locale('es')->translatedFormat('F Y') .
+                'descripcion' => 'Internet '.$inicio->locale('es')->translatedFormat('F Y').
                     ($alta->betweenIncluded($inicio->addDay(), $inicio->endOfMonth()) ? ' (primer mes proporcional)' : ''),
                 'monto' => $monto,
                 'fecha_vencimiento' => $vence->toDateString(),
@@ -126,6 +131,7 @@ class GeneradorMensualidades
             ]);
             // Solo consume los adelantos reservados para este cliente y mes.
             app(AplicadorAnticiposInternet::class)->alGenerar($clienteId, (int) $idCargo, $inicio->toDateString());
+
             return ['estado' => 'creado', 'centavos' => $centavos];
         }, 3);
     }
@@ -154,8 +160,12 @@ class GeneradorMensualidades
         foreach ($pagos as $pago) {
             $disponible = max(0, $this->centavos($pago->monto) - $this->centavos($aplicadosPago[$pago->id] ?? '0'));
             foreach ($restantes as $cargoId => $pendiente) {
-                if ($disponible <= 0) break;
-                if ($pendiente <= 0) continue;
+                if ($disponible <= 0) {
+                    break;
+                }
+                if ($pendiente <= 0) {
+                    continue;
+                }
                 $valor = min($disponible, $pendiente);
                 DB::table('isp_aplicaciones_pago')->insert([
                     'pago_id' => $pago->id, 'cargo_id' => $cargoId,
@@ -174,6 +184,7 @@ class GeneradorMensualidades
         $primerDia = $alta->greaterThan($mes) ? $alta : $mes;
         $dias = $primerDia->diffInDays($mes->endOfMonth()->startOfDay()) + 1;
         $dias = max(0, (int) round($dias));
+
         return (int) floor(($base * $dias / $mes->daysInMonth) + 0.5);
     }
 

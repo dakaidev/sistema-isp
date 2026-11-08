@@ -19,6 +19,7 @@ final class PlanesInternet
                 return $clave;
             }
         }
+
         return 'personalizado';
     }
 }

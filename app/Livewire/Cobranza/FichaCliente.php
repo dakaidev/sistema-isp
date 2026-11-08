@@ -3,6 +3,7 @@
 namespace App\Livewire\Cobranza;
 
 use App\Models\Cliente;
+use App\Support\IspAccess;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -11,28 +12,44 @@ use Livewire\Component;
 /** Ficha de pagos, cargos, adelantos e historial del sistema. */
 class FichaCliente extends Component
 {
-    public function boot(): void { \App\Support\IspAccess::enforce('cobranza.view'); }
+    public function boot(): void
+    {
+        IspAccess::enforce('cobranza.view');
+    }
 
     public int $clienteId;
+
     public string $formulario = '';
 
     /** Edicion puntual de un cargo ya emitido: no afecta ingresos. */
     public ?int $cargoCorreccionId = null;
+
     public string $cargoCorreccionMonto = '';
+
     public string $cargoCorreccionMotivo = '';
 
     public string $tarifa = '';
+
     public string $inicioCobro = '';
+
     public bool $habilitado = false;
 
     public string $importe = '';
+
     public string $categoria = 'internet';
+
     public string $fechaVencimiento = '';
+
     public string $fechaPago = '';
+
     public string $medio = 'efectivo';
+
     public string $referenciaPago = '';
+
     public string $observaciones = '';
+
     public string $mesPago = '';
+
     public string $destinoPago = '';
 
     public function mount(int $clienteId): void
@@ -54,13 +71,18 @@ class FichaCliente extends Component
 
     public function abrir(string $tipo): void
     {
-        if ($tipo === 'pago') \App\Support\IspAccess::enforce('cobranza.pay');
-        if ($tipo === 'tarifa' || $tipo === 'cargo') \App\Support\IspAccess::enforce('tarifas.manage');
+        if ($tipo === 'pago') {
+            IspAccess::enforce('cobranza.pay');
+        }
+        if ($tipo === 'tarifa' || $tipo === 'cargo') {
+            IspAccess::enforce('tarifas.manage');
+        }
 
-        if (!in_array($tipo, ['tarifa', 'pago'], true)) {
+        if (! in_array($tipo, ['tarifa', 'pago'], true)) {
             abort(400);
         }
-        if ($tipo === 'pago') {        } elseif ($tipo === 'pago') {
+        if ($tipo === 'pago') {
+        } elseif ($tipo === 'pago') {
             $this->importe = '';
             $this->fechaPago = today('America/Lima')->toDateString();
             $this->mesPago = substr($this->fechaPago, 0, 7);
@@ -86,13 +108,14 @@ class FichaCliente extends Component
     /** Permite corregir un cargo mensual sin crear pagos ni descuentos ficticios. */
     public function abrirCorreccionCargo(int $cargoId): void
     {
-        \App\Support\IspAccess::enforce('cobranza.adjust');
+        IspAccess::enforce('cobranza.adjust');
 
         $cargo = DB::table('isp_cargos')->where('id', $cargoId)
             ->where('cliente_id', $this->clienteId)->where('categoria', 'internet')
             ->whereIn('tipo', ['cargo_manual', 'mensualidad_automatica'])->first();
-        if (!$cargo) {
+        if (! $cargo) {
             $this->addError('correccionCargo', 'No se encontro una mensualidad de Internet valida para corregir.');
+
             return;
         }
         $this->resetValidation();
@@ -113,9 +136,11 @@ class FichaCliente extends Component
     /** Guardar nueva cifra + razon, en la misma transaccion y con bloqueo por cliente. */
     public function guardarCorreccionCargoAuditada(): void
     {
-        \App\Support\IspAccess::enforce('cobranza.adjust');
+        IspAccess::enforce('cobranza.adjust');
 
-        if ($this->cargoCorreccionId === null) abort(400);
+        if ($this->cargoCorreccionId === null) {
+            abort(400);
+        }
         $datos = $this->validate([
             'cargoCorreccionMonto' => ['required', 'numeric', 'decimal:0,2', 'between:0.01,99999999.99'],
             'cargoCorreccionMotivo' => ['required', 'string', 'min:10', 'max:500'],
@@ -135,7 +160,7 @@ class FichaCliente extends Component
                 ->where('cliente_id', $this->clienteId)->where('categoria', 'internet')
                 ->whereIn('tipo', ['cargo_manual', 'mensualidad_automatica'])
                 ->lockForUpdate()->first();
-            if (!$cargo) {
+            if (! $cargo) {
                 throw ValidationException::withMessages(['correccionCargo' => 'El cargo ya no existe o no se puede corregir.']);
             }
             $antes = $this->centavos($cargo->monto);
@@ -145,10 +170,11 @@ class FichaCliente extends Component
             $aplicaciones = DB::table('isp_aplicaciones_pago')->where('cargo_id', $cargoId)
                 ->lockForUpdate()->get(['monto']);
             $pagado = 0;
-            foreach ($aplicaciones as $aplicacion) $pagado += $this->centavos($aplicacion->monto);
+            foreach ($aplicaciones as $aplicacion) {
+                $pagado += $this->centavos($aplicacion->monto);
+            }
             if ($nuevoCentavos < $pagado) {
-                throw ValidationException::withMessages(['cargoCorreccionMonto' =>
-                    'Este cargo tiene S/ '.number_format($pagado / 100, 2).' ya pagados. No puedes bajarlo por debajo de lo aplicado.']);
+                throw ValidationException::withMessages(['cargoCorreccionMonto' => 'Este cargo tiene S/ '.number_format($pagado / 100, 2).' ya pagados. No puedes bajarlo por debajo de lo aplicado.']);
             }
             DB::table('isp_cargos')->where('id', $cargoId)->update([
                 'monto' => $this->dinero($nuevoCentavos),
@@ -165,6 +191,7 @@ class FichaCliente extends Component
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+
             return [$antes, $nuevoCentavos];
         }, 3);
         $this->cerrarCorreccionCargo();
@@ -175,9 +202,11 @@ class FichaCliente extends Component
 
     public function guardarTarifa(): void
     {
-        \App\Support\IspAccess::enforce('tarifas.manage');
+        IspAccess::enforce('tarifas.manage');
 
-        if ($this->formulario !== 'tarifa') abort(400);
+        if ($this->formulario !== 'tarifa') {
+            abort(400);
+        }
         $datos = $this->validate([
             'tarifa' => ['required', 'numeric', 'decimal:0,2', 'between:0.01,99999999.99'],
             'inicioCobro' => ['required', 'date_format:Y-m-d'],
@@ -209,12 +238,16 @@ class FichaCliente extends Component
 
     public function updatedCategoria(): void
     {
-        if ($this->formulario === 'pago') $this->destinoPago = '';
+        if ($this->formulario === 'pago') {
+            $this->destinoPago = '';
+        }
     }
 
     public function updatedMesPago(): void
     {
-        if ($this->formulario === 'pago') $this->destinoPago = '';
+        if ($this->formulario === 'pago') {
+            $this->destinoPago = '';
+        }
     }
 
     public function updatedFechaPago(string $fecha): void
@@ -228,12 +261,14 @@ class FichaCliente extends Component
     /** Registra dinero recibido y su destino en UNA transaccion; jamas aplica FIFO. */
     public function guardarPago(): void
     {
-        \App\Support\IspAccess::enforce('cobranza.pay');
+        IspAccess::enforce('cobranza.pay');
 
-        if ($this->formulario !== 'pago') abort(400);
+        if ($this->formulario !== 'pago') {
+            abort(400);
+        }
         $datos = $this->validate([
             'importe' => ['required', 'numeric', 'decimal:0,2', 'between:0.01,99999999.99'],
-            'fechaPago' => ['required', 'date_format:Y-m-d', 'before_or_equal:' . today('America/Lima')->toDateString()],
+            'fechaPago' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.today('America/Lima')->toDateString()],
             'mesPago' => ['required', 'date_format:Y-m'],
             'medio' => ['required', 'in:efectivo,yape,plin,transferencia,otro'],
             'categoria' => ['required', 'in:internet,equipo,otros'],
@@ -242,7 +277,7 @@ class FichaCliente extends Component
             'observaciones' => ['nullable', 'string', 'max:1000'],
         ]);
         $mes = $datos['mesPago'].'-01';
-        if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])-01$/D', $mes)) {
+        if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])-01$/D', $mes)) {
             throw ValidationException::withMessages(['mesPago' => 'Selecciona un mes válido.']);
         }
         $centavos = $this->centavos($datos['importe']);
@@ -251,14 +286,14 @@ class FichaCliente extends Component
             Cliente::whereKey($this->clienteId)->lockForUpdate()->firstOrFail();
             $cargo = null;
             if (preg_match('/^cargo:([1-9]\d*)$/D', $destino, $m)) {
-                $cargo = DB::table('isp_cargos')->where('id', (int)$m[1])
+                $cargo = DB::table('isp_cargos')->where('id', (int) $m[1])
                     ->where('cliente_id', $this->clienteId)
                     ->where('categoria', $datos['categoria'])->lockForUpdate()->first();
-                if (!$cargo) {
+                if (! $cargo) {
                     throw ValidationException::withMessages(['destinoPago' => 'La deuda no existe o pertenece a otra categoría.']);
                 }
                 $periodoGenerado = DB::table('isp_mensualidades_generadas')->where('cargo_id', $cargo->id)->first();
-                if ($periodoGenerado && substr((string)$periodoGenerado->periodo, 0, 7) !== $datos['mesPago']) {
+                if ($periodoGenerado && substr((string) $periodoGenerado->periodo, 0, 7) !== $datos['mesPago']) {
                     throw ValidationException::withMessages(['mesPago' => 'El mes indicado no coincide con la mensualidad seleccionada.']);
                 }
                 $yaAplicado = $this->centavos(DB::table('isp_aplicaciones_pago')
@@ -311,7 +346,7 @@ class FichaCliente extends Component
                     'pago_id' => $pagoId, 'cargo_id' => $cargo->id,
                     'monto' => $this->dinero($centavos), 'created_at' => now(), 'updated_at' => now(),
                 ]);
-                if (!DB::table('isp_mensualidades_generadas')->where('cargo_id', $cargo->id)->exists()
+                if (! DB::table('isp_mensualidades_generadas')->where('cargo_id', $cargo->id)->exists()
                     && $datos['categoria'] === 'internet') {
                     DB::table('isp_imputaciones_pagos_meses')->insert([
                         'cliente_id' => $this->clienteId, 'pago_id' => $pagoId,
@@ -353,10 +388,16 @@ class FichaCliente extends Component
                 $usado = $this->centavos(DB::table('isp_aplicaciones_pago')->where('pago_id', $pago->id)->sum('monto'));
                 $disponible = max(0, $this->centavos($pago->monto) - $usado);
                 foreach ($pendientes as $cargoId => $pendiente) {
-                    if ($disponible === 0) break;
-                    if ($pendiente === 0) continue;
+                    if ($disponible === 0) {
+                        break;
+                    }
+                    if ($pendiente === 0) {
+                        continue;
+                    }
                     // Un pago de septiembre nunca cancela octubre de forma automatica.
-                    if (isset($periodos[$cargoId]) && $pago->fecha_pago < $periodos[$cargoId]) continue;
+                    if (isset($periodos[$cargoId]) && $pago->fecha_pago < $periodos[$cargoId]) {
+                        continue;
+                    }
                     $aplicar = min($disponible, $pendiente);
                     DB::table('isp_aplicaciones_pago')->insert([
                         'pago_id' => $pago->id, 'cargo_id' => $cargoId, 'monto' => $this->dinero($aplicar),
@@ -411,9 +452,13 @@ class FichaCliente extends Component
             $saldo += $restante;
             if ($cargo->categoria === 'internet') {
                 $internet += $restante;
-                if ($cargo->fecha_vencimiento < $hoy) $vencido += $restante;
+                if ($cargo->fecha_vencimiento < $hoy) {
+                    $vencido += $restante;
+                }
             }
-            if ($cargo->categoria === 'equipo') $equipo += $restante;
+            if ($cargo->categoria === 'equipo') {
+                $equipo += $restante;
+            }
             $cargosConSaldo[] = ['cargo' => $cargo, 'pendiente' => $restante / 100];
         }
         $mesSeleccionado = $this->mesPago;
@@ -423,24 +468,30 @@ class FichaCliente extends Component
         if ($this->formulario === 'pago') {
             foreach ($cargosConSaldo as $item) {
                 $cargo = $item['cargo'];
-                if ($cargo->categoria !== $this->categoria || $item['pendiente'] <= 0) continue;
+                if ($cargo->categoria !== $this->categoria || $item['pendiente'] <= 0) {
+                    continue;
+                }
                 $mensualidad = $mesesGenerados->get($cargo->id);
-                if ($mensualidad && substr((string)$mensualidad->periodo, 0, 7) !== $mesSeleccionado) continue;
-                $label = $mensualidad ? 'Internet '.substr((string)$mensualidad->periodo, 0, 7) : $cargo->descripcion;
+                if ($mensualidad && substr((string) $mensualidad->periodo, 0, 7) !== $mesSeleccionado) {
+                    continue;
+                }
+                $label = $mensualidad ? 'Internet '.substr((string) $mensualidad->periodo, 0, 7) : $cargo->descripcion;
                 $opcionesPago[] = ['valor' => 'cargo:'.$cargo->id,
                     'texto' => $label.' — pendiente S/ '.number_format($item['pendiente'], 2)];
             }
             if ($this->categoria === 'internet' && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/D', $mesSeleccionado)) {
                 $mes = $mesSeleccionado.'-01';
-                $existe = $mesesGenerados->contains(fn ($m) => substr((string)$m->periodo, 0, 7) === $mesSeleccionado);
-                if (!$existe && $mes < today('America/Lima')->startOfMonth()->toDateString()) {
+                $existe = $mesesGenerados->contains(fn ($m) => substr((string) $m->periodo, 0, 7) === $mesSeleccionado);
+                if (! $existe && $mes < today('America/Lima')->startOfMonth()->toDateString()) {
                     $opcionesPago[] = ['valor' => 'historial',
                         'texto' => 'Mes '.$mesSeleccionado.' sin factura (solo historial; no baja deudas verificadas)'];
                 }
             }
         }
         $pagado = 0;
-        foreach ($pagos as $pago) $pagado += $this->centavos($pago->monto);
+        foreach ($pagos as $pago) {
+            $pagado += $this->centavos($pago->monto);
+        }
         $pagosDistribuidosHistoricos = $this->centavos(DB::table('isp_repartos_periodos')
             ->where('cliente_id', $this->clienteId)->sum('monto'));
         $anticiposSinAplicar = DB::table('isp_anticipos_internet')->where('cliente_id', $this->clienteId)
@@ -491,6 +542,7 @@ class FichaCliente extends Component
         $historialCorrecciones = DB::table('isp_ajustes_cargos')
             ->where('cliente_id', $this->clienteId)
             ->orderByDesc('id')->get()->groupBy('cargo_id');
+
         return view('livewire.cobranza.ficha-cliente', compact(
             'cliente', 'config', 'cargosConSaldo', 'pagos', 'historicoMensual', 'resumen', 'repartos', 'conciliaciones', 'exoneraciones', 'opcionesPago', 'imputacionesDirectas', 'historialCorrecciones', 'anticipos', 'pagosAplicadosAFacturas', 'aplicacionesConCargo'
         ));

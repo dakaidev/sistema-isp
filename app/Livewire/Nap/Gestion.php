@@ -5,6 +5,7 @@ namespace App\Livewire\Nap;
 use App\Models\CajaNap;
 use App\Models\MovimientoNap;
 use App\Models\PuertoNap;
+use App\Support\IspAccess;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -14,25 +15,39 @@ use Livewire\WithPagination;
 
 class Gestion extends Component
 {
-    public function boot(): void { \App\Support\IspAccess::enforce('nap.view'); }
+    public function boot(): void
+    {
+        IspAccess::enforce('nap.view');
+    }
 
     use WithPagination;
 
     public string $buscar = '';
+
     public string $filtroSede = 'todas';
 
     public ?int $cajaEditandoId = null;
+
     public ?int $cajaSeleccionadaId = null;
+
     public string $sede = 'upina';
+
     public string $codigo = '';
+
     public string $capacidad = '8';
+
     public string $ubicacionGps = '';
+
     public string $referencia = '';
+
     public string $observaciones = '';
+
     public bool $activa = true;
 
     public ?int $puertoEditandoId = null;
+
     public string $estadoPuerto = 'sin_verificar';
+
     public string $observacionesPuerto = '';
 
     private const ESTADOS_PUERTO = [
@@ -51,7 +66,7 @@ class Gestion extends Component
 
     public function nuevaCaja(): void
     {
-        \App\Support\IspAccess::enforce('nap.edit');
+        IspAccess::enforce('nap.edit');
 
         $this->reset(['cajaEditandoId', 'codigo', 'ubicacionGps', 'referencia', 'observaciones']);
         $this->sede = $this->filtroSede === 'calasuca' ? 'calasuca' : 'upina';
@@ -62,7 +77,7 @@ class Gestion extends Component
 
     public function editarCaja(int $id): void
     {
-        \App\Support\IspAccess::enforce('nap.edit');
+        IspAccess::enforce('nap.edit');
 
         $caja = CajaNap::findOrFail($id);
         $this->cajaEditandoId = $caja->id;
@@ -84,7 +99,7 @@ class Gestion extends Component
             return [null, null];
         }
 
-        if (!preg_match('/\A\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*,\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*\z/D', $texto, $m)) {
+        if (! preg_match('/\A\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*,\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*\z/D', $texto, $m)) {
             throw ValidationException::withMessages([
                 'ubicacionGps' => 'Escribe latitud y longitud separadas por una coma. Ejemplo: -13.8, -70.0',
             ]);
@@ -96,12 +111,13 @@ class Gestion extends Component
                 'ubicacionGps' => 'Las coordenadas GPS están fuera del rango válido.',
             ]);
         }
+
         return [number_format($lat, 7, '.', ''), number_format($lng, 7, '.', '')];
     }
 
     public function guardarCaja(): void
     {
-        \App\Support\IspAccess::enforce('nap.edit');
+        IspAccess::enforce('nap.edit');
 
         $this->codigo = trim($this->codigo);
         $this->referencia = trim($this->referencia);
@@ -167,8 +183,7 @@ class Gestion extends Component
                 if ($capacidad < $anterior) {
                     // Solo eliminamos puertos autogenerados vacíos y nunca utilizados.
                     $extras = $caja->puertos()->where('numero', '>', $capacidad)->lockForUpdate()->get();
-                    if ($extras->count() !== $anterior - $capacidad || $extras->contains(fn ($p) =>
-                        $p->estado !== 'sin_verificar' || $p->servicio_id !== null || trim((string) $p->observaciones) !== ''
+                    if ($extras->count() !== $anterior - $capacidad || $extras->contains(fn ($p) => $p->estado !== 'sin_verificar' || $p->servicio_id !== null || trim((string) $p->observaciones) !== ''
                     )) {
                         throw ValidationException::withMessages([
                             'capacidad' => 'No se puede reducir la capacidad: hay puertos adicionales revisados, ocupados o vinculados. Conserva la capacidad y revísalos primero.',
@@ -205,7 +220,7 @@ class Gestion extends Component
 
     public function abrirPuerto(int $id): void
     {
-        \App\Support\IspAccess::enforce('nap.edit');
+        IspAccess::enforce('nap.edit');
 
         $puerto = PuertoNap::where('caja_nap_id', $this->cajaSeleccionadaId)->findOrFail($id);
         $this->puertoEditandoId = $puerto->id;
@@ -224,7 +239,7 @@ class Gestion extends Component
 
     public function guardarPuerto(): void
     {
-        \App\Support\IspAccess::enforce('nap.edit');
+        IspAccess::enforce('nap.edit');
 
         $this->observacionesPuerto = trim($this->observacionesPuerto);
         $datos = $this->validate([

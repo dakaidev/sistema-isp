@@ -1,4 +1,5 @@
 <?php
+
 /** Instalador de cambios puntuales. Ejecutar desde la carpeta raiz de Laravel. */
 declare(strict_types=1);
 $root = getcwd();
@@ -18,25 +19,29 @@ $newFiles = [
     'resources/views/cobranza/pago-adelantado.blade.php',
 ];
 foreach (array_merge($paths, $newFiles) as $relative) {
-    if (!is_file($root . '/' . $relative)) {
+    if (! is_file($root.'/'.$relative)) {
         fwrite(STDERR, "FALTA: $relative. No se ha modificado codigo existente.\n");
         exit(1);
     }
 }
 $changes = [];
 foreach ($paths as $relative) {
-    $changes[$relative] = file_get_contents($root . '/' . $relative);
+    $changes[$relative] = file_get_contents($root.'/'.$relative);
 }
 function once(string &$source, string $needle, string $replace, string $label): void
 {
     $count = substr_count($source, $needle);
-    if ($count !== 1) throw new RuntimeException("No reconozco el bloque '$label' (encontrados: $count). No se aplicó nada. Necesito revisar tu versión del archivo.");
+    if ($count !== 1) {
+        throw new RuntimeException("No reconozco el bloque '$label' (encontrados: $count). No se aplicó nada. Necesito revisar tu versión del archivo.");
+    }
     $source = str_replace($needle, $replace, $source);
 }
 try {
     $ruta = &$changes[$paths[0]];
-    if (str_contains($ruta, "cobranza_isp_anticipos.php")) throw new RuntimeException('El módulo ya parece instalado. No instalar dos veces.');
-    $ruta = rtrim($ruta) . "\nrequire __DIR__.'/cobranza_isp_anticipos.php';\n";
+    if (str_contains($ruta, 'cobranza_isp_anticipos.php')) {
+        throw new RuntimeException('El módulo ya parece instalado. No instalar dos veces.');
+    }
+    $ruta = rtrim($ruta)."\nrequire __DIR__.'/cobranza_isp_anticipos.php';\n";
     unset($ruta);
 
     $ficha = &$changes[$paths[1]];
@@ -60,11 +65,11 @@ try {
 
     $distribuir = &$changes[$paths[2]];
     once($distribuir,
-        "            \$disponible = \$this->centavos(\$pago->monto) - \$aplicadoCargo - \$aplicadoMes;",
+        '            $disponible = $this->centavos($pago->monto) - $aplicadoCargo - $aplicadoMes;',
         "            \$reservado = \$this->centavos(DB::table('isp_anticipos_internet')->where('pago_id', \$pago->id)\n                ->selectRaw('COALESCE(SUM(monto - monto_aplicado), 0) as total')->value('total'));\n            \$disponible = \$this->centavos(\$pago->monto) - \$aplicadoCargo - \$aplicadoMes - \$reservado;",
         'blindaje de distribución del pago');
     once($distribuir,
-        "        \$sinAsignar = max(0, \$this->centavos(\$pago->monto) - \$aplicado)/100;",
+        '        $sinAsignar = max(0, $this->centavos($pago->monto) - $aplicado)/100;',
         "        \$reservado = \$this->centavos(DB::table('isp_anticipos_internet')->where('pago_id', \$pago->id)\n            ->selectRaw('COALESCE(SUM(monto - monto_aplicado), 0) as total')->value('total'));\n        \$sinAsignar = max(0, \$this->centavos(\$pago->monto) - \$aplicado - \$reservado)/100;",
         'saldo disponible al distribuir');
     unset($distribuir);
@@ -73,7 +78,7 @@ try {
     // Las versiones antiguas consumian creditos sin respetar el mes. Desactivar ese cruce.
     $generador = str_replace("                        \$this->aplicarCreditoInternet((int) \$plan->cliente_id);\n", '', $generador);
     once($generador,
-        "                        return [true, \$centavos];",
+        '                        return [true, $centavos];',
         "                        // Aplicar EXCLUSIVAMENTE dinero reservado para esta mensualidad.\n                        app(AplicadorAnticiposInternet::class)->alGenerar((int) \$plan->cliente_id, (int) \$idCargo, \$inicio->toDateString());\n                        return [true, \$centavos];",
         'aplicación automática de anticipos en el generador');
     unset($generador);
@@ -88,11 +93,11 @@ try {
         "                ->merge(\$imputacionesDirectas->collapse()->pluck('periodo'))\n                ->merge(\$anticipos->pluck('periodo'))",
         'meses reservados en el historial');
     once($vista,
-        "                        \$pagosAplicadosAlMes = \$imputacionesDirectas->collapse()->filter(fn (\$a) => substr((string)\$a->periodo, 0, 7) === \$mes);",
+        '                        $pagosAplicadosAlMes = $imputacionesDirectas->collapse()->filter(fn ($a) => substr((string)$a->periodo, 0, 7) === $mes);',
         "                        \$pagosAplicadosAlMes = \$imputacionesDirectas->collapse()->filter(fn (\$a) => substr((string)\$a->periodo, 0, 7) === \$mes);\n                        \$anticiposDelMes = \$anticipos->filter(fn (\$a) => substr((string)\$a->periodo, 0, 7) === \$mes);",
         'anticipos por mes');
     once($vista,
-        "                        @foreach (\$exoneracionesMes as \$e)",
+        '                        @foreach ($exoneracionesMes as $e)',
         <<<'BLADE'
                         @foreach ($anticiposDelMes as $adelanto)
                             <div class="mt-2 border-t border-zinc-800 pt-2 text-xs text-sky-300">
@@ -114,13 +119,13 @@ BLADE,
 // Valida primero cada cambio y respalda todo antes de escribir.
 $stamp = date('Ymd_His');
 foreach ($paths as $relative) {
-    if (!copy($root . '/' . $relative, $root . '/' . $relative . '.antes-adelantos-' . $stamp . '.bak')) {
+    if (! copy($root.'/'.$relative, $root.'/'.$relative.'.antes-adelantos-'.$stamp.'.bak')) {
         fwrite(STDERR, "ERROR: No se pudo crear respaldo de $relative; no hay modificaciones.\n");
         exit(1);
     }
 }
 foreach ($changes as $relative => $contenido) {
-    if (file_put_contents($root . '/' . $relative, $contenido) === false) {
+    if (file_put_contents($root.'/'.$relative, $contenido) === false) {
         fwrite(STDERR, "ERROR al guardar $relative. Restaura sus copias .bak.\n");
         exit(1);
     }

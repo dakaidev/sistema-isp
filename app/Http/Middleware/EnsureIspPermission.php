@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Middleware;
 
 use App\Support\IspAccess;
@@ -11,6 +12,7 @@ class EnsureIspPermission
     public function handle(Request $request, Closure $next, string $permission): Response
     {
         IspAccess::enforce($permission);
+
         return $next($request);
     }
 }

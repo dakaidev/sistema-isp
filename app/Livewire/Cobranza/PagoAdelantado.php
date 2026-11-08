@@ -3,6 +3,7 @@
 namespace App\Livewire\Cobranza;
 
 use App\Models\Cliente;
+use App\Support\IspAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -13,15 +14,25 @@ use Livewire\Component;
 /** Un ingreso bancario, varios destinos mensuales, sin aplicar FIFO. */
 class PagoAdelantado extends Component
 {
-    public function boot(): void { \App\Support\IspAccess::enforce('cobranza.pay'); }
+    public function boot(): void
+    {
+        IspAccess::enforce('cobranza.pay');
+    }
 
     public int $clienteId;
+
     public string $importe = '';
+
     public string $operacionUuid = '';
+
     public string $fechaPago = '';
+
     public string $medio = 'efectivo';
+
     public string $referenciaPago = '';
+
     public string $observaciones = '';
+
     /** @var array<int,array{periodo:string,monto:string}> */
     public array $meses = [];
 
@@ -38,6 +49,7 @@ class PagoAdelantado extends Component
     {
         if (count($this->meses) >= 12) {
             $this->addError('meses', 'Máximo 12 meses por cobro.');
+
             return;
         }
         $ultimo = collect($this->meses)->last()['periodo'] ?? today('America/Lima')->format('Y-m');
@@ -50,8 +62,12 @@ class PagoAdelantado extends Component
 
     public function quitarMes(int $index): void
     {
-        if (count($this->meses) <= 1) return;
-        if (!array_key_exists($index, $this->meses)) return;
+        if (count($this->meses) <= 1) {
+            return;
+        }
+        if (! array_key_exists($index, $this->meses)) {
+            return;
+        }
         unset($this->meses[$index]);
         $this->meses = array_values($this->meses);
         $this->resetValidation();
@@ -110,7 +126,7 @@ class PagoAdelantado extends Component
                 // Un cargo creado desde "Cargo" no pertenece automaticamente a isp_mensualidades_generadas.
                 // Para meses actuales/pasados reconocer UNICAMENTE un cargo manual de Internet
                 // cuyo vencimiento caiga dentro del mes escogido. Nunca adivinar con varios cargos.
-                if (!$factura && $periodo <= $hoyMes) {
+                if (! $factura && $periodo <= $hoyMes) {
                     $finDelMes = CarbonImmutable::parse($periodo, 'America/Lima')->endOfMonth()->toDateString();
                     $cargosManuales = DB::table('isp_cargos')
                         ->where('cliente_id', $this->clienteId)
@@ -122,8 +138,7 @@ class PagoAdelantado extends Component
                         })
                         ->orderBy('id')->lockForUpdate()->get();
                     if ($cargosManuales->count() > 1) {
-                        throw ValidationException::withMessages(['meses' =>
-                            'Hay varios cargos manuales de Internet con vencimiento en '.substr($periodo, 0, 7).
+                        throw ValidationException::withMessages(['meses' => 'Hay varios cargos manuales de Internet con vencimiento en '.substr($periodo, 0, 7).
                             '. No asignaremos el dinero al azar. Revisa los cargos y avísame para elegir uno.']);
                     }
                     if ($cargosManuales->count() === 1) {
@@ -132,8 +147,7 @@ class PagoAdelantado extends Component
                         $otroPeriodo = DB::table('isp_imputaciones_pagos_meses')
                             ->where('cargo_id', $cargoManual->id)->whereDate('periodo', '!=', $periodo)->exists();
                         if ($otroPeriodo) {
-                            throw ValidationException::withMessages(['meses' =>
-                                'El cargo manual de '.substr($periodo, 0, 7).
+                            throw ValidationException::withMessages(['meses' => 'El cargo manual de '.substr($periodo, 0, 7).
                                 ' ya esta asociado a otro mes. Revisa sus pagos antes de continuar.']);
                         }
                         $factura = (object) ['cargo_id' => $cargoManual->id];
@@ -143,7 +157,7 @@ class PagoAdelantado extends Component
                 if ($factura) {
                     $cargo = DB::table('isp_cargos')->where('id', $factura->cargo_id)
                         ->where('cliente_id', $this->clienteId)->where('categoria', 'internet')->lockForUpdate()->first();
-                    if (!$cargo) {
+                    if (! $cargo) {
                         throw ValidationException::withMessages(['meses' => 'No encontramos el cargo de '.substr($periodo, 0, 7).'.']);
                     }
                     $ocupado = $this->centavos(DB::table('isp_aplicaciones_pago')->where('cargo_id', $cargo->id)->sum('monto'));
@@ -158,11 +172,10 @@ class PagoAdelantado extends Component
                     ];
                 } else {
                     if ($periodo <= $hoyMes) {
-                        throw ValidationException::withMessages(['meses' =>
-                            'No encontre una mensualidad ni un cargo manual de Internet con vencimiento en '.substr($periodo, 0, 7).
+                        throw ValidationException::withMessages(['meses' => 'No encontre una mensualidad ni un cargo manual de Internet con vencimiento en '.substr($periodo, 0, 7).
                             '. Si ya creaste el cargo, comprueba su categoria y fecha de vencimiento. No lo dupliques.']);
                     }
-                    if (!$config || !$config->habilitado || $config->tarifa_mensual === null || $config->tarifa_mensual <= 0) {
+                    if (! $config || ! $config->habilitado || $config->tarifa_mensual === null || $config->tarifa_mensual <= 0) {
                         throw ValidationException::withMessages(['meses' => 'Primero configura y habilita la tarifa mensual del cliente para recibir adelantos.']);
                     }
                     $finMes = CarbonImmutable::parse($periodo, 'America/Lima')->endOfMonth()->toDateString();
@@ -243,7 +256,10 @@ class PagoAdelantado extends Component
         $cliente = Cliente::findOrFail($this->clienteId);
         $config = DB::table('isp_configuracion_mensual')->where('cliente_id', $this->clienteId)->first();
         $previsto = 0;
-        foreach ($this->meses as $fila) $previsto += $this->centavos($fila['monto'] ?? '0');
+        foreach ($this->meses as $fila) {
+            $previsto += $this->centavos($fila['monto'] ?? '0');
+        }
+
         return view('livewire.cobranza.pago-adelantado', [
             'cliente' => $cliente, 'config' => $config,
             'sumaAsignada' => $this->dinero($previsto),

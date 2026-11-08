@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('isp_ajustes_cargos', function (Blueprint $table) {
@@ -19,6 +20,7 @@ return new class extends Migration {
             $table->index(['cliente_id', 'cargo_id']);
         });
     }
+
     public function down(): void
     {
         Schema::dropIfExists('isp_ajustes_cargos');

@@ -20,7 +20,7 @@ class ServicioTarifaTest extends TestCase
 
         // Esta prueba solo debe ejecutarse
         // en el entorno de testing.
-        if (!app()->environment('testing')) {
+        if (! app()->environment('testing')) {
             throw new \RuntimeException(
                 'No se permite ejecutar fuera de testing.'
             );

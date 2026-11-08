@@ -4,46 +4,69 @@ namespace App\Livewire\Servicios;
 
 use App\Models\Cliente;
 use App\Models\Servicio;
+use App\Models\Tarifa;
+use App\Support\IspAccess;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\Tarifa;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
 
 class Gestion extends Component
 {
-    public function boot(): void { \App\Support\IspAccess::enforce('servicios.view'); }
+    public function boot(): void
+    {
+        IspAccess::enforce('servicios.view');
+    }
 
     use WithPagination;
 
     // La lista es la pantalla de inicio; los formularios se abren solo al usarlos.
     public string $modoPantalla = 'lista';
+
     public string $buscar = '';
+
     public string $filtroEstado = 'todos';
+
     public string $filtroTipo = 'todos';
+
     public string $filtroLocalidad = 'todas';
+
     public bool $soloPorRevisar = false; // Conexiones con velocidad pendiente de registrar
+
     public string $clienteIdentificacion = ''; // Cabecera de edicion, solo lectura
 
     public ?int $servicioEditandoId = null;
-   
+
     // Formulario para cambiar tarifas
     public ?int $servicioTarifaId = null;
 
     public string $nuevoMonto = '';
+
     public string $nuevaVigencia = '';
+
     public string $motivoCambio = '';
 
     public string $cliente_id = '';
+
     public string $tipo_conexion = 'fibra';
+
     public string $nombre_plan = '';
+
     public string $velocidad_mbps = '';
+
     public string $tarifa_mensual = '';
+
     public string $fecha_activacion = '';
+
     public string $estado = 'activo';
+
     public string $direccion_instalacion = '';
+
     public string $ip_asignada = '';
+
     public string $mac_equipo = '';
+
     public string $observaciones = '';
 
     public function mount(): void
@@ -51,10 +74,9 @@ class Gestion extends Component
         $this->fecha_activacion = '';
     }
 
-    
     public function nuevo(): void
     {
-        \App\Support\IspAccess::enforce('servicios.create');
+        IspAccess::enforce('servicios.create');
 
         $this->cancelarEdicion();
         $this->cerrarCambioTarifa();
@@ -68,10 +90,25 @@ class Gestion extends Component
         $this->modoPantalla = 'lista';
     }
 
-    public function updatedBuscar(): void { $this->resetPage(); }
-    public function updatedFiltroEstado(): void { $this->resetPage(); }
-    public function updatedFiltroTipo(): void { $this->resetPage(); }
-    public function updatedFiltroLocalidad(): void { $this->resetPage(); }
+    public function updatedBuscar(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFiltroEstado(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFiltroTipo(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFiltroLocalidad(): void
+    {
+        $this->resetPage();
+    }
 
     public function verConexiones(): void
     {
@@ -96,7 +133,7 @@ class Gestion extends Component
 
     public function abrirCambioTarifa(int $id): void
     {
-        \App\Support\IspAccess::enforce('tarifas.manage');
+        IspAccess::enforce('tarifas.manage');
 
         // Comprobar que el servicio existe
         $servicio = Servicio::findOrFail($id);
@@ -127,16 +164,16 @@ class Gestion extends Component
         $this->resetValidation();
     }
 
-    
     public function guardarCambioTarifa(): void
     {
-        \App\Support\IspAccess::enforce('tarifas.manage');
+        IspAccess::enforce('tarifas.manage');
 
         if ($this->servicioTarifaId === null) {
             $this->addError(
                 'nuevoMonto',
                 'Primero selecciona un servicio.'
             );
+
             return;
         }
 
@@ -182,7 +219,7 @@ class Gestion extends Component
                 ->first();
 
             if ($ultimaTarifa === null) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'nuevoMonto' => 'Este servicio no tiene una tarifa inicial.',
                 ]);
             }
@@ -193,10 +230,9 @@ class Gestion extends Component
                 $datos['nuevaVigencia'] <=
                 $ultimaTarifa->vigente_desde->format('Y-m-d')
             ) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'nuevaVigencia' =>
-                        'La fecha debe ser posterior al último cambio: '
-                        . $ultimaTarifa->vigente_desde->format('d/m/Y'),
+                throw ValidationException::withMessages([
+                    'nuevaVigencia' => 'La fecha debe ser posterior al último cambio: '
+                        .$ultimaTarifa->vigente_desde->format('d/m/Y'),
                 ]);
             }
 
@@ -206,7 +242,7 @@ class Gestion extends Component
                 ===
                 number_format((float) $ultimaTarifa->monto, 2, '.', '')
             ) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'nuevoMonto' => 'La nueva tarifa debe ser diferente.',
                 ]);
             }
@@ -237,16 +273,13 @@ class Gestion extends Component
         );
     }
 
-
-
-    
     public function editar(int $id): void
     {
-        \App\Support\IspAccess::enforce('servicios.edit');
+        IspAccess::enforce('servicios.edit');
 
         $servicio = Servicio::with('cliente')->findOrFail($id);
 
-        $this->clienteIdentificacion = trim(($servicio->cliente?->codigo ?? '') . ' - ' . ($servicio->cliente?->nombre ?? 'Cliente no disponible'));
+        $this->clienteIdentificacion = trim(($servicio->cliente?->codigo ?? '').' - '.($servicio->cliente?->nombre ?? 'Cliente no disponible'));
         $this->servicioEditandoId = $servicio->id;
         $this->modoPantalla = 'formulario';
 
@@ -275,11 +308,9 @@ class Gestion extends Component
         $this->resetValidation();
     }
 
-
-
     public function guardar(): void
     {
-        \App\Support\IspAccess::enforce($this->servicioEditandoId === null ? 'servicios.create' : 'servicios.edit');
+        IspAccess::enforce($this->servicioEditandoId === null ? 'servicios.create' : 'servicios.edit');
 
         if ($this->servicioTarifaId !== null) {
             $this->addError(
@@ -287,11 +318,8 @@ class Gestion extends Component
                 'Estás cambiando una tarifa. Utiliza el formulario de cambio de tarifa.'
             );
 
-        return;
+            return;
         }
-
-
-
 
         // En edición solo validamos y guardamos datos técnicos.
         // La tarifa inicial, el cliente titular y la fecha original NO son editables aquí.
@@ -324,8 +352,6 @@ class Gestion extends Component
             'ip_asignada.ip' => 'Ingresa una dirección IP válida.',
         ]);
 
-
-        
         // Convertir campos opcionales vacíos a NULL
         foreach ([
             'nombre_plan',
@@ -343,8 +369,6 @@ class Gestion extends Component
 
         }
 
-
-        
         if ($this->servicioEditandoId !== null) {
 
             // Buscar el servicio que estamos editando
@@ -357,7 +381,6 @@ class Gestion extends Component
 
             $mensaje = '¡Servicio actualizado correctamente!';
 
-        
         } else {
 
             DB::transaction(function () use ($datos) {
@@ -378,7 +401,6 @@ class Gestion extends Component
 
             $mensaje = '¡Servicio y tarifa inicial registrados correctamente!';
         }
-
 
         $this->reset([
             'servicioEditandoId',
@@ -401,11 +423,9 @@ class Gestion extends Component
 
         $this->resetPage();
 
-        
         session()->flash('mensaje', $mensaje);
 
     }
-
 
     public function cancelarEdicion(): void
     {
@@ -431,9 +451,6 @@ class Gestion extends Component
         $this->resetValidation();
     }
 
-
-
-
     public function render()
     {
         $buscar = trim($this->buscar);
@@ -452,16 +469,12 @@ class Gestion extends Component
                         });
                 });
             })
-            ->when($this->filtroEstado !== 'todos', fn ($q) =>
-                $q->where('estado', $this->filtroEstado))
-            ->when($this->filtroTipo !== 'todos', fn ($q) =>
-                $q->where('tipo_conexion', $this->filtroTipo))
+            ->when($this->filtroEstado !== 'todos', fn ($q) => $q->where('estado', $this->filtroEstado))
+            ->when($this->filtroTipo !== 'todos', fn ($q) => $q->where('tipo_conexion', $this->filtroTipo))
             ->when($this->soloPorRevisar, fn ($q) => $q->where(function ($v) {
                 $v->whereNull('velocidad_mbps')->orWhere('velocidad_mbps', '<=', 0);
             }))
-            ->when($this->filtroLocalidad !== 'todas', fn ($q) =>
-                $q->whereHas('cliente', fn ($cliente) =>
-                    $cliente->where('sector', $this->filtroLocalidad)))
+            ->when($this->filtroLocalidad !== 'todas', fn ($q) => $q->whereHas('cliente', fn ($cliente) => $cliente->where('sector', $this->filtroLocalidad)))
             ->latest('id')
             ->paginate(15);
 

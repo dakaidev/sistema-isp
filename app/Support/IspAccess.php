@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Support;
 
 use App\Models\User;
@@ -15,9 +16,14 @@ final class IspAccess
 
     public static function allows(?User $user, string $permission): bool
     {
-        if (!$user || !$user->activo) return false;
-        if ($permission === 'dashboard.view') return true;
+        if (! $user || ! $user->activo) {
+            return false;
+        }
+        if ($permission === 'dashboard.view') {
+            return true;
+        }
         $granted = self::RULES[$user->rol ?? ''] ?? [];
+
         return in_array('*', $granted, true) || in_array($permission, $granted, true);
     }
 

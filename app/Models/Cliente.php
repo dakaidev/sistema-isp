@@ -24,7 +24,6 @@ class Cliente extends Model
         'observaciones',
     ];
 
-        
     protected function casts(): array
     {
         return [
@@ -37,5 +36,4 @@ class Cliente extends Model
     {
         return $this->hasMany(Servicio::class);
     }
-
 }

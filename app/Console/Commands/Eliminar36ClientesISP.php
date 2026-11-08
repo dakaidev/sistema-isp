@@ -16,6 +16,7 @@ use Throwable;
 class Eliminar36ClientesISP extends Command
 {
     protected $signature = 'isp:eliminar-36-clientes {--aplicar : Ejecutar borrado definitivo} {--respaldo= : Ruta absoluta a mysqldump reciente y completo} {--confirmar= : Debe ser ELIMINAR-36}';
+
     protected $description = 'Eliminar definitivamente los 36 clientes solicitados y sus dependencias, con protecciones.';
 
     private const CODIGOS = [
@@ -43,9 +44,10 @@ class Eliminar36ClientesISP extends Command
             $plan = $this->prepararPlan(false);
             $this->mostrarPlan($plan);
 
-            if (!$this->option('aplicar')) {
+            if (! $this->option('aplicar')) {
                 $this->warn('SOLO REVISION: no se borro ni modifico nada.');
                 $this->line('Para ejecutar: --aplicar --confirmar=ELIMINAR-36 --respaldo="RUTA_DEL_SQL"');
+
                 return self::SUCCESS;
             }
             if ($this->option('confirmar') !== 'ELIMINAR-36') {
@@ -100,10 +102,12 @@ class Eliminar36ClientesISP extends Command
             $this->info('OK: transaccion completada; no se desactivaron claves foraneas.');
             $this->info('OK: cajas NAP y puertos fisicos conservados; puertos ligados a servicios borrados quedaron sin verificar.');
             $this->warn('Los pagos e historicos borrados ya no sumaran en Finanzas. Conserva el respaldo SQL.');
+
             return self::SUCCESS;
         } catch (Throwable $e) {
             $this->error('DETENIDO: '.$e->getMessage());
             $this->warn('Si hubo un error dentro de la transaccion, MySQL revierte todos sus cambios.');
+
             return self::FAILURE;
         }
     }
@@ -128,7 +132,7 @@ class Eliminar36ClientesISP extends Command
             foreach ($fks as $fk) {
                 $padre = $fk['padre'];
                 $hijo = $fk['hijo'];
-                if (!isset($ids[$padre]) || $padre === $hijo || $ids[$padre] === []) {
+                if (! isset($ids[$padre]) || $padre === $hijo || $ids[$padre] === []) {
                     continue;
                 }
                 if ($hijo === 'isp_nap_puertos') {
@@ -137,7 +141,7 @@ class Eliminar36ClientesISP extends Command
                 if (in_array($hijo, ['isp_cajas_nap', 'isp_nap_movimientos', 'users', 'isp_gastos'], true)) {
                     throw new RuntimeException("Dependencia inesperada con tabla protegida: {$hijo}");
                 }
-                if ($fk['columna_padre'] !== 'id' || !Schema::hasColumn($hijo, 'id')) {
+                if ($fk['columna_padre'] !== 'id' || ! Schema::hasColumn($hijo, 'id')) {
                     throw new RuntimeException("FK incompatible: {$hijo}.{$fk['columna']}");
                 }
                 $encontrados = DB::table($hijo)
@@ -149,7 +153,7 @@ class Eliminar36ClientesISP extends Command
                     $cambio = true;
                 }
             }
-            if (!$cambio) {
+            if (! $cambio) {
                 break;
             }
             if ($vuelta === 49) {
@@ -165,7 +169,7 @@ class Eliminar36ClientesISP extends Command
             if ($hijo === 'isp_nap_puertos' || empty($ids[$hijo])) {
                 continue;
             }
-            if (!in_array($padre, ['clientes', 'servicios', 'isp_cargos', 'isp_pagos'], true)) {
+            if (! in_array($padre, ['clientes', 'servicios', 'isp_cargos', 'isp_pagos'], true)) {
                 continue;
             }
             if ($fk['columna_padre'] !== 'id' || $ids[$padre] === []) {
@@ -190,7 +194,7 @@ class Eliminar36ClientesISP extends Command
             $tabla = $col->tabla;
             $campo = $col->columna;
             $padre = $expected[$campo];
-            if (empty($ids[$padre]) || !Schema::hasColumn($tabla, 'id')) {
+            if (empty($ids[$padre]) || ! Schema::hasColumn($tabla, 'id')) {
                 continue;
             }
             $enlazado = false;
@@ -200,7 +204,7 @@ class Eliminar36ClientesISP extends Command
                     break;
                 }
             }
-            if (!$enlazado) {
+            if (! $enlazado) {
                 $n = DB::table($tabla)->whereIn($campo, $ids[$padre])->count();
                 if ($n > 0) {
                     throw new RuntimeException("Existen {$n} referencias sin FK en {$tabla}.{$campo}; requiere revision, nada se borra.");
@@ -209,18 +213,20 @@ class Eliminar36ClientesISP extends Command
         }
 
         $puertos = [];
-        if (Schema::hasTable('isp_nap_puertos') && !empty($ids['servicios'])) {
+        if (Schema::hasTable('isp_nap_puertos') && ! empty($ids['servicios'])) {
             $puertos = $this->ordenarIds(DB::table('isp_nap_puertos')
                 ->whereIn('servicio_id', $ids['servicios'])->pluck('id')->all());
         }
 
         $orden = $this->ordenBorrado($ids, $fks);
+
         return ['ids' => $ids, 'puertos' => $puertos, 'orden' => $orden];
     }
 
     private function foreignKeys(): array
     {
-        $rows = DB::select("SELECT TABLE_NAME AS hijo, COLUMN_NAME AS columna, REFERENCED_TABLE_NAME AS padre, REFERENCED_COLUMN_NAME AS columna_padre FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL");
+        $rows = DB::select('SELECT TABLE_NAME AS hijo, COLUMN_NAME AS columna, REFERENCED_TABLE_NAME AS padre, REFERENCED_COLUMN_NAME AS columna_padre FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL');
+
         return array_map(fn ($r) => (array) $r, $rows);
     }
 
@@ -231,7 +237,7 @@ class Eliminar36ClientesISP extends Command
             if ($fk['hijo'] === 'isp_nap_puertos') {
                 continue;
             }
-            if (!empty($ids[$fk['padre']]) && !empty($ids[$fk['hijo']])) {
+            if (! empty($ids[$fk['padre']]) && ! empty($ids[$fk['hijo']])) {
                 $aristas[$fk['padre']][$fk['hijo']] = true;
             }
         }
@@ -254,6 +260,7 @@ class Eliminar36ClientesISP extends Command
         foreach (array_keys($ids) as $tabla) {
             $visitar($tabla);
         }
+
         return $orden;
     }
 
@@ -261,6 +268,7 @@ class Eliminar36ClientesISP extends Command
     {
         $ids = array_values(array_unique(array_map('intval', $ids)));
         sort($ids, SORT_NUMERIC);
+
         return $ids;
     }
 
@@ -275,11 +283,11 @@ class Eliminar36ClientesISP extends Command
             }
         }
         $this->line('Puertos NAP a desvincular (sin borrar puertos): '.count($plan['puertos']));
-        if (!empty($plan['ids']['isp_pagos'])) {
+        if (! empty($plan['ids']['isp_pagos'])) {
             $suma = DB::table('isp_pagos')->whereIn('id', $plan['ids']['isp_pagos'])->sum('monto');
             $this->warn('Se eliminaran pagos por S/ '.number_format((float) $suma, 2));
         }
-        if (!empty($plan['ids']['isp_registros_mensuales_historicos'])) {
+        if (! empty($plan['ids']['isp_registros_mensuales_historicos'])) {
             $suma = DB::table('isp_registros_mensuales_historicos')
                 ->whereIn('id', $plan['ids']['isp_registros_mensuales_historicos'])->sum('importe');
             $this->warn('Se eliminaran montos historicos por S/ '.number_format((float) $suma, 2));
@@ -289,7 +297,7 @@ class Eliminar36ClientesISP extends Command
     private function verificarRespaldo(string $ruta): void
     {
         $archivo = realpath($ruta);
-        if (!$archivo || !is_file($archivo)) {
+        if (! $archivo || ! is_file($archivo)) {
             throw new RuntimeException('Respaldo SQL inexistente.');
         }
         $rutaNormal = str_replace('\\', '/', $archivo);
@@ -311,7 +319,7 @@ class Eliminar36ClientesISP extends Command
         fseek($f, -min(4096, filesize($archivo)), SEEK_END);
         $tail = stream_get_contents($f);
         fclose($f);
-        if (!str_contains($head, 'MySQL dump') || !str_contains($tail, 'Dump completed on')) {
+        if (! str_contains($head, 'MySQL dump') || ! str_contains($tail, 'Dump completed on')) {
             throw new RuntimeException('El respaldo no tiene encabezado y cierre de mysqldump.');
         }
         $this->info('OK: respaldo SQL reciente y completo verificado: '.$archivo);

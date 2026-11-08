@@ -3,24 +3,33 @@
 namespace App\Livewire\Cobranza;
 
 use App\Models\Cliente;
+use App\Support\IspAccess;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 class Gestion extends Component
 {
-    public function boot(): void { \App\Support\IspAccess::enforce('cobranza.view'); }
+    public function boot(): void
+    {
+        IspAccess::enforce('cobranza.view');
+    }
 
     use WithPagination;
 
     public string $buscar = '';
+
     public string $filtro = 'todos';
+
     public string $filtroSede = 'todas';
+
     public string $filtroConexion = 'todos';
+
     public string $filtroFacturacion = 'todos';
+
     public string $filtroDeuda = 'todos';
+
     public string $mes = '';
 
     public function mount(): void
@@ -28,11 +37,35 @@ class Gestion extends Component
         $this->mes = today('America/Lima')->format('Y-m');
     }
 
-    public function updatedFiltroSede(): void { $this->resetPage(); $this->cerrar(); }
-    public function updatedFiltroConexion(): void { $this->resetPage(); $this->cerrar(); }
-    public function updatedFiltroFacturacion(): void { $this->resetPage(); $this->cerrar(); }
-    public function updatedFiltroDeuda(): void { $this->resetPage(); $this->cerrar(); }
-    public function updatedMes(): void { $this->resetPage(); $this->cerrar(); }
+    public function updatedFiltroSede(): void
+    {
+        $this->resetPage();
+        $this->cerrar();
+    }
+
+    public function updatedFiltroConexion(): void
+    {
+        $this->resetPage();
+        $this->cerrar();
+    }
+
+    public function updatedFiltroFacturacion(): void
+    {
+        $this->resetPage();
+        $this->cerrar();
+    }
+
+    public function updatedFiltroDeuda(): void
+    {
+        $this->resetPage();
+        $this->cerrar();
+    }
+
+    public function updatedMes(): void
+    {
+        $this->resetPage();
+        $this->cerrar();
+    }
 
     public function limpiarFiltros(): void
     {
@@ -45,16 +78,27 @@ class Gestion extends Component
         $this->resetPage();
         $this->cerrar();
     }
+
     public ?int $clienteSeleccionado = null;
+
     public string $nombreSeleccionado = '';
+
     public string $accion = '';
+
     public string $importe = '';
+
     public string $categoria = 'internet';
+
     public string $concepto = '';
+
     public string $fechaVencimiento = '';
+
     public string $fechaPago = '';
+
     public string $medio = 'efectivo';
+
     public string $referenciaPago = '';
+
     public string $observaciones = '';
 
     public function updatedFiltro(): void
@@ -71,21 +115,26 @@ class Gestion extends Component
 
     public function abrir(int $clienteId, string $accion): void
     {
-        if ($accion === 'cargo') \App\Support\IspAccess::enforce('cobranza.adjust');
-        if ($accion === 'pago') \App\Support\IspAccess::enforce('cobranza.pay');
+        if ($accion === 'cargo') {
+            IspAccess::enforce('cobranza.adjust');
+        }
+        if ($accion === 'pago') {
+            IspAccess::enforce('cobranza.pay');
+        }
 
-        if (!in_array($accion, ['cargo', 'pago', 'historial'], true)) {
+        if (! in_array($accion, ['cargo', 'pago', 'historial'], true)) {
             abort(400, 'Acción no permitida.');
         }
         // Todos los pagos nuevos se registran desde la ficha, con mes y deuda elegidos en un paso.
         if ($accion === 'pago') {
             $this->redirectRoute('cobranza.ficha', ['cliente' => $clienteId]);
+
             return;
         }
         $cliente = Cliente::findOrFail($clienteId);
         $this->resetValidation();
         $this->clienteSeleccionado = $cliente->id;
-        $this->nombreSeleccionado = $cliente->codigo . ' — ' . $cliente->nombre;
+        $this->nombreSeleccionado = $cliente->codigo.' — '.$cliente->nombre;
         $this->accion = $accion;
         $this->importe = '';
         $this->concepto = '';
@@ -110,7 +159,7 @@ class Gestion extends Component
 
     public function guardarCargo(): void
     {
-        \App\Support\IspAccess::enforce('cobranza.adjust');
+        IspAccess::enforce('cobranza.adjust');
 
         if ($this->accion !== 'cargo' || $this->clienteSeleccionado === null) {
             abort(400);
@@ -142,14 +191,14 @@ class Gestion extends Component
 
     public function guardarPago(): void
     {
-        \App\Support\IspAccess::enforce('cobranza.pay');
+        IspAccess::enforce('cobranza.pay');
 
         if ($this->accion !== 'pago' || $this->clienteSeleccionado === null) {
             abort(400);
         }
         $datos = $this->validate([
             'importe' => 'required|numeric|decimal:0,2|between:0.01,99999999.99',
-            'fechaPago' => 'required|date_format:Y-m-d|before_or_equal:' . today('America/Lima')->toDateString(),
+            'fechaPago' => 'required|date_format:Y-m-d|before_or_equal:'.today('America/Lima')->toDateString(),
             'medio' => 'required|in:efectivo,yape,plin,transferencia,otro',
             'categoria' => 'required|in:internet,equipo,otros',
             'referenciaPago' => 'nullable|string|max:100',
@@ -267,6 +316,7 @@ class Gestion extends Component
         $repartosMeses = $this->aCentavos(DB::table('isp_repartos_periodos')
             ->where('cliente_id', $clienteId)->sum('monto'));
         $credito = max(0, $this->aCentavos($pagos) - $aplicadoTotal - $repartosMeses);
+
         return [
             'saldo' => $saldo / 100,
             'saldo_internet' => $saldoInternet / 100,
@@ -286,7 +336,7 @@ class Gestion extends Component
         $hoy = today('America/Lima')->toDateString();
         $mesSeleccionado = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/D', $this->mes)
             ? $this->mes : today('America/Lima')->format('Y-m');
-        $inicioMes = $mesSeleccionado . '-01';
+        $inicioMes = $mesSeleccionado.'-01';
         $finMes = date('Y-m-t', strtotime($inicioMes));
 
         // Evitar multiplicar cargos cuando un cargo tiene más de una aplicación.

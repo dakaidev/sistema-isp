@@ -2,8 +2,9 @@
 
 namespace App\Livewire\Finanzas;
 
-use Carbon\CarbonImmutable;
+use App\Support\IspAccess;
 use App\Support\ResumenIngresosMensuales;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -12,23 +13,35 @@ use Livewire\WithPagination;
 
 class Resumen extends Component
 {
-    public function boot(): void { \App\Support\IspAccess::enforce('finanzas.view'); }
+    public function boot(): void
+    {
+        IspAccess::enforce('finanzas.view');
+    }
 
     use WithPagination;
 
     public string $anio = '2026';
+
     public string $mes = '10';
+
     public bool $mostrarFormulario = false;
 
     public string $fechaGasto = '';
+
     public string $importe = '';
+
     public string $categoria = 'internet_mayorista';
+
     public string $descripcion = '';
+
     public string $medio = 'efectivo';
+
     public string $referencia = '';
+
     public string $observaciones = '';
 
     public ?int $gastoAnularId = null;
+
     public string $motivoAnulacion = '';
 
     private const CATEGORIAS = [
@@ -55,8 +68,15 @@ class Resumen extends Component
         $this->fechaGasto = $hoy->toDateString();
     }
 
-    public function updatedAnio(): void { $this->resetPage();  }
-    public function updatedMes(): void { $this->resetPage();  }
+    public function updatedAnio(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedMes(): void
+    {
+        $this->resetPage();
+    }
 
     public function nuevoGasto(): void
     {
@@ -82,16 +102,18 @@ class Resumen extends Component
 
     public function guardarGasto(): void
     {
-        if (!$this->mostrarFormulario) abort(400);
+        if (! $this->mostrarFormulario) {
+            abort(400);
+        }
         $datos = $this->validate([
-            'fechaGasto' => ['required','date_format:Y-m-d', 'after_or_equal:2020-01-01',
-                'before_or_equal:' . CarbonImmutable::now('America/Lima')->toDateString()],
-            'importe' => ['required','numeric','decimal:0,2','between:0.01,9999999999.99'],
-            'categoria' => ['required','in:' . implode(',', array_keys(self::CATEGORIAS))],
-            'descripcion' => ['required','string','min:3','max:255'],
-            'medio' => ['required','in:' . implode(',', array_keys(self::MEDIOS))],
-            'referencia' => ['nullable','string','max:100'],
-            'observaciones' => ['nullable','string','max:1000'],
+            'fechaGasto' => ['required', 'date_format:Y-m-d', 'after_or_equal:2020-01-01',
+                'before_or_equal:'.CarbonImmutable::now('America/Lima')->toDateString()],
+            'importe' => ['required', 'numeric', 'decimal:0,2', 'between:0.01,9999999999.99'],
+            'categoria' => ['required', 'in:'.implode(',', array_keys(self::CATEGORIAS))],
+            'descripcion' => ['required', 'string', 'min:3', 'max:255'],
+            'medio' => ['required', 'in:'.implode(',', array_keys(self::MEDIOS))],
+            'referencia' => ['nullable', 'string', 'max:100'],
+            'observaciones' => ['nullable', 'string', 'max:1000'],
         ]);
 
         DB::table('isp_gastos')->insert([
@@ -106,8 +128,8 @@ class Resumen extends Component
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        $this->anio = substr($datos['fechaGasto'],0,4);
-        $this->mes = substr($datos['fechaGasto'],5,2);
+        $this->anio = substr($datos['fechaGasto'], 0, 4);
+        $this->mes = substr($datos['fechaGasto'], 5, 2);
         $this->resetPage();
         $this->cancelar();
         session()->flash('finanzas_mensaje', 'Gasto guardado en el mes de su fecha.');
@@ -116,8 +138,9 @@ class Resumen extends Component
     public function solicitarAnulacion(int $id): void
     {
         $existe = DB::table('isp_gastos')->where('id', $id)->whereNull('anulado_at')->exists();
-        if (!$existe) {
+        if (! $existe) {
             $this->addError('motivoAnulacion', 'El gasto ya fue anulado o no existe.');
+
             return;
         }
         $this->cancelar();
@@ -126,8 +149,10 @@ class Resumen extends Component
 
     public function confirmarAnulacion(): void
     {
-        if ($this->gastoAnularId === null) abort(400);
-        $this->validate(['motivoAnulacion' => ['required','string','min:5','max:255']]);
+        if ($this->gastoAnularId === null) {
+            abort(400);
+        }
+        $this->validate(['motivoAnulacion' => ['required', 'string', 'min:5', 'max:255']]);
         $cambiados = DB::table('isp_gastos')
             ->where('id', $this->gastoAnularId)->whereNull('anulado_at')
             ->update([
@@ -181,7 +206,7 @@ class Resumen extends Component
 
         $gastosAnio = DB::table('isp_gastos')->whereNull('anulado_at')
             ->whereBetween('fecha_gasto', [$desdeAnio, $hastaAnio])
-            ->get(['fecha_gasto','monto']);
+            ->get(['fecha_gasto', 'monto']);
         $sumasGasto = array_fill(1, 12, 0);
         foreach ($gastosAnio as $fila) {
             $mesGasto = (int) substr((string) $fila->fecha_gasto, 5, 2);

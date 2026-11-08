@@ -1,4 +1,5 @@
 <?php
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -10,7 +11,7 @@ return new class extends Migration
     {
         // La cuenta ID 1 es el administrador del respaldo ISP original.
         // Abortamos si no existe: evitar dejar a todos sin permisos.
-        if (DB::table('users')->exists() && !DB::table('users')->where('id', 1)->exists()) {
+        if (DB::table('users')->exists() && ! DB::table('users')->where('id', 1)->exists()) {
             throw new RuntimeException('No existe el administrador principal (usuario ID 1). Migración detenida; revisa la base de datos.');
         }
         Schema::table('users', function (Blueprint $table) {

@@ -28,18 +28,20 @@ final class ResumenIngresosMensuales
             'nota' => 'Septiembre: S/ 60 de mensualidad anterior y S/ 70 recibidos el 30/09 como adelanto de octubre.',
         ],
     ];
+
     public static function calcular(iterable $pagos, iterable $historicos): array
     {
         $grupos = [];
         $crear = static function (int $id, string $periodo, string $codigo, string $nombre) use (&$grupos): string {
-            $clave = $periodo . '|' . $id;
-            if (!isset($grupos[$clave])) {
+            $clave = $periodo.'|'.$id;
+            if (! isset($grupos[$clave])) {
                 $grupos[$clave] = [
                     'periodo' => $periodo, 'cliente_id' => $id,
                     'codigo' => $codigo, 'nombre' => $nombre,
                     'anterior' => 0, 'internet' => 0, 'otros' => 0,
                 ];
             }
+
             return $clave;
         };
         foreach ($historicos as $h) {
@@ -58,9 +60,11 @@ final class ResumenIngresosMensuales
         $detalles = array_fill(1, 12, []);
         foreach ($grupos as $g) {
             $mes = (int) substr($g['periodo'], 5, 2);
-            if ($mes < 1 || $mes > 12) continue;
+            if ($mes < 1 || $mes > 12) {
+                continue;
+            }
             $coinciden = $g['anterior'] > 0 && $g['internet'] > 0;
-            $claveConfirmada = $g['periodo'] . '|' . strtoupper(trim($g['codigo']));
+            $claveConfirmada = $g['periodo'].'|'.strtoupper(trim($g['codigo']));
             $regla = self::CONCILIACIONES_CONFIRMADAS[$claveConfirmada] ?? null;
             $confirmado = $coinciden && $regla !== null
                 && $g['anterior'] === $regla['historico']
@@ -69,7 +73,9 @@ final class ResumenIngresosMensuales
                 ? $g['anterior'] + $g['internet']
                 : max($g['anterior'], $g['internet'])) + $g['otros'];
             $sumas[$mes] += $monto;
-            if ($coinciden && !$confirmado) $pendientes[$mes]++;
+            if ($coinciden && ! $confirmado) {
+                $pendientes[$mes]++;
+            }
             if ($monto !== 0) {
                 $detalles[$mes][] = [
                     'codigo' => $g['codigo'], 'nombre' => $g['nombre'],
@@ -87,6 +93,7 @@ final class ResumenIngresosMensuales
             usort($lista, static fn ($a, $b) => strcmp($a['codigo'], $b['codigo']));
         }
         unset($lista);
+
         return ['sumas' => $sumas, 'pendientes' => $pendientes, 'detalles' => $detalles];
     }
 }

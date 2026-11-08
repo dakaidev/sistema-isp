@@ -19,7 +19,9 @@ class CobrosPorUsuario extends Component
     use WithPagination;
 
     public string $anio = '';
+
     public string $mes = '';
+
     public string $usuarioSeleccionado = 'todos';
 
     public function boot(): void
@@ -34,9 +36,20 @@ class CobrosPorUsuario extends Component
         $this->mes = $hoy->format('m');
     }
 
-    public function updatedAnio(): void { $this->resetPage(); }
-    public function updatedMes(): void { $this->resetPage(); }
-    public function updatedUsuarioSeleccionado(): void { $this->resetPage(); }
+    public function updatedAnio(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedMes(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedUsuarioSeleccionado(): void
+    {
+        $this->resetPage();
+    }
 
     public function render()
     {
@@ -47,7 +60,7 @@ class CobrosPorUsuario extends Component
         $hoy = CarbonImmutable::now('America/Lima');
 
         $fechaPrimera = DB::table('isp_pagos')
-            ->when(!$admin, fn ($q) => $q->where('usuario_id', $idActual))
+            ->when(! $admin, fn ($q) => $q->where('usuario_id', $idActual))
             ->min('fecha_pago');
         $primerAnio = $fechaPrimera ? (int) substr((string) $fechaPrimera, 0, 4) : (int) $hoy->year;
         $primerAnio = max(2000, min($primerAnio, (int) $hoy->year));
@@ -65,7 +78,7 @@ class CobrosPorUsuario extends Component
             ->leftJoin('users as u', 'u.id', '=', 'p.usuario_id')
             ->whereBetween('p.fecha_pago', [$desde, $hasta]);
 
-        if (!$admin) {
+        if (! $admin) {
             $consulta->where('p.usuario_id', $idActual);
         } elseif ($this->usuarioSeleccionado === 'sin_usuario') {
             $consulta->whereNull('p.usuario_id');
@@ -89,8 +102,8 @@ class CobrosPorUsuario extends Component
 
         $pagos = (clone $consulta)
             ->orderByDesc('p.fecha_pago')->orderByDesc('p.id')
-            ->select(['p.id','p.fecha_pago','p.created_at','p.monto','p.medio',
-                'p.categoria','c.codigo','c.nombre','u.name as registrado_por'])
+            ->select(['p.id', 'p.fecha_pago', 'p.created_at', 'p.monto', 'p.medio',
+                'p.categoria', 'c.codigo', 'c.nombre', 'u.name as registrado_por'])
             ->paginate(15);
 
         return view('livewire.finanzas.cobros-por-usuario', [
@@ -100,7 +113,7 @@ class CobrosPorUsuario extends Component
             'mesSeleccionado' => $mes,
             'nombreMes' => CarbonImmutable::create($anio, $mes, 1, 0, 0, 0, 'America/Lima')
                 ->locale('es')->translatedFormat('F Y'),
-            'usuarios' => $admin ? DB::table('users')->select(['id','name'])
+            'usuarios' => $admin ? DB::table('users')->select(['id', 'name'])
                 ->orderBy('name')->get() : collect(),
             'totalPagos' => $total,
             'cantidadPagos' => $cantidad,

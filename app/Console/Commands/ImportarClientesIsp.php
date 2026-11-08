@@ -21,14 +21,16 @@ class ImportarClientesIsp extends Command
         $esAbsoluta = str_starts_with($entrada, '/') || preg_match('/^[A-Za-z]:[\\\\\/]/', $entrada);
         $ruta = $esAbsoluta ? $entrada : base_path($entrada);
 
-        if (!is_readable($ruta)) {
+        if (! is_readable($ruta)) {
             $this->error("No puedo leer el archivo: {$ruta}");
+
             return self::FAILURE;
         }
 
         $csv = fopen($ruta, 'rb');
         if ($csv === false) {
             $this->error('No pude abrir el CSV.');
+
             return self::FAILURE;
         }
 
@@ -95,16 +97,17 @@ class ImportarClientesIsp extends Command
             $codigosExistentes = array_fill_keys($existentes, true);
             $nuevos = array_values(array_filter(
                 $filas,
-                fn ($fila) => !isset($codigosExistentes[$fila['codigo']])
+                fn ($fila) => ! isset($codigosExistentes[$fila['codigo']])
             ));
 
-            $this->info('Clientes válidos en el CSV: ' . count($filas));
-            $this->line('Ya existentes (se conservan sin modificar): ' . (count($filas) - count($nuevos)));
-            $this->info('Clientes nuevos: ' . count($nuevos));
+            $this->info('Clientes válidos en el CSV: '.count($filas));
+            $this->line('Ya existentes (se conservan sin modificar): '.(count($filas) - count($nuevos)));
+            $this->info('Clientes nuevos: '.count($nuevos));
 
-            if (!$this->option('aplicar')) {
+            if (! $this->option('aplicar')) {
                 $this->warn('MODO SIMULACIÓN: no se guardó nada.');
                 $this->line('Para insertar los nuevos clientes, repite el comando con --aplicar.');
+
                 return self::SUCCESS;
             }
 
@@ -114,11 +117,13 @@ class ImportarClientesIsp extends Command
                 }
             });
 
-            $this->info('Importación terminada. Clientes insertados: ' . count($nuevos));
+            $this->info('Importación terminada. Clientes insertados: '.count($nuevos));
             $this->warn('No se importaron saldos, mensualidades, servicios ni estados de corte. Deben verificarse por separado.');
+
             return self::SUCCESS;
         } catch (\Throwable $e) {
             $this->error($e->getMessage());
+
             return self::FAILURE;
         } finally {
             fclose($csv);

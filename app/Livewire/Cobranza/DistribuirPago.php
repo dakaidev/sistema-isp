@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Cobranza;
 
+use App\Support\IspAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -10,10 +11,15 @@ use Livewire\Component;
 /** Destino del pago ≠ fecha del ingreso. No genera ingresos nuevos. */
 class DistribuirPago extends Component
 {
-    public function boot(): void { \App\Support\IspAccess::enforce('cobranza.view'); }
+    public function boot(): void
+    {
+        IspAccess::enforce('cobranza.view');
+    }
 
     public int $pagoId;
+
     public string $periodo = '';
+
     public string $monto = '';
 
     public function mount(int $pagoId): void
@@ -26,20 +32,22 @@ class DistribuirPago extends Component
 
     public function guardar(): void
     {
-        \App\Support\IspAccess::enforce('cobranza.pay');
+        IspAccess::enforce('cobranza.pay');
 
         $datos = $this->validate([
             'periodo' => ['required', 'date_format:Y-m'],
             'monto' => ['required', 'numeric', 'decimal:0,2', 'between:0.01,99999999.99'],
         ]);
         $periodo = $datos['periodo'].'-01';
-        if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])-01$/D', $periodo) ||
+        if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])-01$/D', $periodo) ||
             $periodo > today('America/Lima')->startOfMonth()->toDateString()) {
             throw ValidationException::withMessages(['periodo' => 'Selecciona un mes válido, no futuro.']);
         }
         DB::transaction(function () use ($datos, $periodo) {
             $pago = DB::table('isp_pagos')->where('id', $this->pagoId)->first();
-            if (!$pago || $pago->categoria !== 'internet') abort(404);
+            if (! $pago || $pago->categoria !== 'internet') {
+                abort(404);
+            }
             // Coordinar escrituras para el mismo cliente con generador mensual y otros cobros.
             DB::table('clientes')->where('id', $pago->cliente_id)->lockForUpdate()->first();
             $pago = DB::table('isp_pagos')->where('id', $this->pagoId)->lockForUpdate()->first();
@@ -50,7 +58,7 @@ class DistribuirPago extends Component
                 ->selectRaw('COALESCE(SUM(monto - monto_aplicado), 0) as total')->value('total'));
             $disponible = $this->centavos($pago->monto) - $aplicadoCargo - $aplicadoMes - $reservado;
             if ($centavos > $disponible) {
-                throw ValidationException::withMessages(['monto' => 'Solo quedan S/ '.number_format(max(0,$disponible)/100,2).' de este pago sin asignar.']);
+                throw ValidationException::withMessages(['monto' => 'Solo quedan S/ '.number_format(max(0, $disponible) / 100, 2).' de este pago sin asignar.']);
             }
             if (DB::table('isp_repartos_periodos')->where('pago_id', $pago->id)->where('periodo', $periodo)->exists()) {
                 throw ValidationException::withMessages(['periodo' => 'Este pago ya tiene una asignación a ese mes. No se duplicó.']);
@@ -60,14 +68,16 @@ class DistribuirPago extends Component
                 ->whereDate('periodo', $periodo)->first();
             if ($factura) {
                 $cargo = DB::table('isp_cargos')->where('id', $factura->cargo_id)->lockForUpdate()->first();
-                if (!$cargo) throw ValidationException::withMessages(['periodo' => 'No encontramos el cargo del mes.']);
+                if (! $cargo) {
+                    throw ValidationException::withMessages(['periodo' => 'No encontramos el cargo del mes.']);
+                }
                 if (DB::table('isp_aplicaciones_pago')->where('pago_id', $pago->id)->where('cargo_id', $cargo->id)->exists()) {
                     throw ValidationException::withMessages(['periodo' => 'Este pago ya fue aplicado a esa factura.']);
                 }
                 $pendiente = $this->centavos($cargo->monto) - $this->centavos(
                     DB::table('isp_aplicaciones_pago')->where('cargo_id', $cargo->id)->sum('monto'));
                 if ($centavos > $pendiente) {
-                    throw ValidationException::withMessages(['monto' => 'Ese mes solo tiene pendiente S/ '.number_format(max(0,$pendiente)/100,2).'.']);
+                    throw ValidationException::withMessages(['monto' => 'Ese mes solo tiene pendiente S/ '.number_format(max(0, $pendiente) / 100, 2).'.']);
                 }
                 DB::table('isp_aplicaciones_pago')->insert([
                     'pago_id' => $pago->id, 'cargo_id' => $cargo->id,
@@ -90,7 +100,6 @@ class DistribuirPago extends Component
         session()->flash('mensaje', 'Importe asignado al mes seleccionado. El ingreso original conserva su fecha.');
     }
 
-
     /**
      * Convierte una asignacion INFORMATIVA del mes en una aplicacion contable
      * a una deuda anterior que el administrador ya confirmó.
@@ -98,7 +107,7 @@ class DistribuirPago extends Component
      */
     public function conciliarReparto(int $repartoId, int $cargoId): void
     {
-        \App\Support\IspAccess::enforce('cobranza.adjust');
+        IspAccess::enforce('cobranza.adjust');
 
         DB::transaction(function () use ($repartoId, $cargoId) {
             $pago = DB::table('isp_pagos')->where('id', $this->pagoId)->first();
@@ -110,14 +119,14 @@ class DistribuirPago extends Component
             $reparto = DB::table('isp_repartos_periodos')
                 ->where('id', $repartoId)->where('pago_id', $pago->id)
                 ->where('cliente_id', $pago->cliente_id)->lockForUpdate()->first();
-            if (!$reparto) {
+            if (! $reparto) {
                 throw ValidationException::withMessages(['conciliacion' => 'Este reparto ya no existe o fue conciliado. Actualiza la pagina.']);
             }
             $cargo = DB::table('isp_cargos')
                 ->where('id', $cargoId)->where('cliente_id', $pago->cliente_id)
                 ->where('categoria', $pago->categoria)
                 ->where('tipo', 'saldo_excel_verificado')->lockForUpdate()->first();
-            if (!$cargo) {
+            if (! $cargo) {
                 throw ValidationException::withMessages(['conciliacion' => 'Solo puedes aplicar el pago a una deuda anterior confirmada del mismo cliente.']);
             }
             $centavos = $this->centavos($reparto->monto);
@@ -173,7 +182,7 @@ class DistribuirPago extends Component
 
     private function centavos(mixed $monto): int
     {
-        return (int) round(((float)$monto) * 100);
+        return (int) round(((float) $monto) * 100);
     }
 
     private function dinero(int $centavos): string
@@ -214,7 +223,8 @@ class DistribuirPago extends Component
         $aplicado = $this->centavos($cargos->sum('monto')) + $this->centavos($anteriores->sum('monto'));
         $reservado = $this->centavos(DB::table('isp_anticipos_internet')->where('pago_id', $pago->id)
             ->selectRaw('COALESCE(SUM(monto - monto_aplicado), 0) as total')->value('total'));
-        $sinAsignar = max(0, $this->centavos($pago->monto) - $aplicado - $reservado)/100;
-        return view('livewire.cobranza.distribuir-pago', compact('pago','cargos','anteriores','exoneraciones','sinAsignar','cargosVerificados','conciliaciones'));
+        $sinAsignar = max(0, $this->centavos($pago->monto) - $aplicado - $reservado) / 100;
+
+        return view('livewire.cobranza.distribuir-pago', compact('pago', 'cargos', 'anteriores', 'exoneraciones', 'sinAsignar', 'cargosVerificados', 'conciliaciones'));
     }
 }
