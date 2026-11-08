@@ -54,6 +54,22 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - name: "Preparar PHP y Composer"
+        if: steps.version.outputs.publicar == 'true'
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: "Instalar dependencias PHP para Flux"
+        if: steps.version.outputs.publicar == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer install --no-dev --no-scripts --prefer-dist --no-interaction --no-progress --optimize-autoloader
+          test -f vendor/livewire/flux/dist/flux.css
+
       - name: "Compilar los estilos y JavaScript"
         if: steps.version.outputs.publicar == 'true'
         shell: bash
