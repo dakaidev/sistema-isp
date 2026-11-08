@@ -458,6 +458,19 @@ class FichaCliente extends Component
         $imputacionesDirectas = DB::table('isp_imputaciones_pagos_meses')
             ->where('cliente_id', $this->clienteId)->get()->groupBy('pago_id');
         $anticipos = DB::table('isp_anticipos_internet')->where('cliente_id', $this->clienteId)->orderBy('periodo')->get();
+        // Solo lectura: cargos realmente cubiertos por cada pago.
+        $aplicacionesConCargo = DB::table('isp_aplicaciones_pago as a')
+            ->join('isp_pagos as p', 'p.id', '=', 'a.pago_id')
+            ->join('isp_cargos as c', 'c.id', '=', 'a.cargo_id')
+            ->leftJoin('isp_mensualidades_generadas as m', 'm.cargo_id', '=', 'c.id')
+            ->where('p.cliente_id', $this->clienteId)
+            ->where('c.cliente_id', $this->clienteId)
+            ->select('a.pago_id', 'a.cargo_id', 'a.monto',
+                'c.descripcion', 'c.fecha_vencimiento', 'm.periodo',
+                'c.monto as cargo_monto', 'c.categoria as cargo_categoria')
+            ->get()
+            ->groupBy('pago_id');
+
         // SOLO LECTURA: pagos que ya estan aplicados a facturas mensuales reales.
         // La fecha de ingreso sigue en isp_pagos; el mes cubierto lo indica la factura.
         // No crea pagos, aplicaciones ni nuevas mensualidades.
@@ -479,7 +492,7 @@ class FichaCliente extends Component
             ->where('cliente_id', $this->clienteId)
             ->orderByDesc('id')->get()->groupBy('cargo_id');
         return view('livewire.cobranza.ficha-cliente', compact(
-            'cliente', 'config', 'cargosConSaldo', 'pagos', 'historicoMensual', 'resumen', 'repartos', 'conciliaciones', 'exoneraciones', 'opcionesPago', 'imputacionesDirectas', 'historialCorrecciones', 'anticipos', 'pagosAplicadosAFacturas'
+            'cliente', 'config', 'cargosConSaldo', 'pagos', 'historicoMensual', 'resumen', 'repartos', 'conciliaciones', 'exoneraciones', 'opcionesPago', 'imputacionesDirectas', 'historialCorrecciones', 'anticipos', 'pagosAplicadosAFacturas', 'aplicacionesConCargo'
         ));
     }
 }

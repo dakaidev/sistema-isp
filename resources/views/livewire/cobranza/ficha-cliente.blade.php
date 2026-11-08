@@ -174,22 +174,25 @@
     </section>
 
     <div class="grid gap-5 md:grid-cols-2">
-        {{-- Historial de pagos y asignaciones conservado en MySQL --}}
+        {{-- Historial de ingresos y mensualidades, solo lectura --}}
         @php
             $todosRepartos = $repartos->collapse();
-            $mesesDelHistorial = $historicoMensual->pluck('periodo')
-                ->merge($pagos->pluck('fecha_pago'))
-                ->merge($todosRepartos->pluck('periodo'))
+            $todasAplicaciones = $aplicacionesConCargo->collapse();
+            $reservasPendientes = $anticipos->filter(fn ($a) => (float)$a->monto - (float)$a->monto_aplicado > 0.005);
+            $otrasImputaciones = $imputacionesDirectas->collapse()->reject(fn ($a) => $aplicacionesConCargo->has($a->pago_id));
+            $otrosRepartos = $todosRepartos->reject(fn ($a) => $aplicacionesConCargo->has($a->pago_id));
+
+            $mesesDelHistorial = $pagos->pluck('fecha_pago')
+                ->merge($todasAplicaciones->map(fn ($a) => $a->periodo ?: $a->fecha_vencimiento))
+                ->merge($reservasPendientes->pluck('periodo'))
+                ->merge($otrasImputaciones->pluck('periodo'))
+                ->merge($otrosRepartos->pluck('periodo'))
                 ->merge($exoneraciones->pluck('periodo'))
-                ->merge($imputacionesDirectas->collapse()->pluck('periodo'))
-                ->merge($anticipos->pluck('periodo'))
-                ->merge($pagosAplicadosAFacturas->pluck('periodo'))
-                ->map(fn ($fecha) => substr((string) $fecha, 0, 7))
-                ->filter()
-                ->unique()
-                ->sortDesc()
-                ->values();
+                ->map(fn ($fecha) => substr((string)$fecha, 0, 7))
+                ->filter(fn ($mes) => preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $mes))
+                ->unique()->sortDesc()->values();
         @endphp
+
         <section class="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
             <div class="flex items-start justify-between gap-3">
                 <div>
@@ -198,101 +201,121 @@
                 </div>
                 <span class="rounded-lg bg-zinc-800 px-3 py-2 text-xs text-zinc-300">{{ $mesesDelHistorial->count() }} meses</span>
             </div>
-            <div class="mt-3 rounded-xl border border-blue-500/30 bg-blue-950/20 px-3 py-3 text-xs text-blue-100">
-                <span class="font-bold text-zinc-300">Registro anterior:</span> importe anotado por mes, sin fecha exacta de cobro; no es un pago nuevo.
-                <span class="font-bold text-emerald-300">Pago recibido:</span> dinero registrado con su fecha real de cobro.
-                <span class="font-bold text-sky-300">Asignado:</span> mes de servicio al que corresponde; no es otro ingreso.
-            </div>
-            
+
             <div class="mt-4 max-h-[430px] space-y-2 overflow-y-auto pr-1">
                 @forelse ($mesesDelHistorial as $mes)
                     @php
-                        $registrosAnterioresMes = $historicoMensual->filter(fn ($h) => substr((string) $h->periodo, 0, 7) === $mes);
-                        $ingresosMes = $pagos->filter(fn ($p) => substr((string) $p->fecha_pago, 0, 7) === $mes);
-                        $asignacionesMes = $todosRepartos->filter(fn ($r) => substr((string) $r->periodo, 0, 7) === $mes);
-                        $exoneracionesMes = $exoneraciones->filter(fn ($e) => substr((string) $e->periodo, 0, 7) === $mes);
-                        $pagosAplicadosAlMes = $imputacionesDirectas->collapse()->filter(fn ($a) => substr((string)$a->periodo, 0, 7) === $mes);
-                        $anticiposDelMes = $anticipos->filter(fn ($a) => substr((string)$a->periodo, 0, 7) === $mes);
-                        $facturasPagadasMes = $pagosAplicadosAFacturas->filter(fn ($a) => substr((string)$a->periodo, 0, 7) === $mes);
+                        $ingresosMes = $pagos->filter(fn ($p) => substr((string)$p->fecha_pago, 0, 7) === $mes);
+                        $aplicacionesMes = $todasAplicaciones
+                            ->filter(fn ($a) => substr((string)($a->periodo ?: $a->fecha_vencimiento), 0, 7) === $mes)
+                            ->groupBy('cargo_id');
+                        $reservasMes = $reservasPendientes->filter(fn ($a) => substr((string)$a->periodo, 0, 7) === $mes);
+                        $repartosMes = $otrosRepartos->filter(fn ($a) => substr((string)$a->periodo, 0, 7) === $mes);
+                        $imputacionesMes = $otrasImputaciones->filter(fn ($a) => substr((string)$a->periodo, 0, 7) === $mes);
+                        $exoneracionesMes = $exoneraciones->filter(fn ($a) => substr((string)$a->periodo, 0, 7) === $mes);
                     @endphp
+
                     <div wire:key="mes-historial-{{ $mes }}" class="rounded-xl border border-zinc-800 bg-zinc-950/70 px-4 py-3 text-sm">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <strong class="capitalize">{{ \Carbon\Carbon::parse($mes.'-01')->locale('es')->translatedFormat('F Y') }}</strong>
                             @if ($ingresosMes->isNotEmpty())
-                                <span class="font-bold text-emerald-300">Ingresó S/ {{ number_format((float) $ingresosMes->sum('monto'), 2) }}</span>
+                                <span class="font-bold text-emerald-300">Ingresó S/ {{ number_format((float)$ingresosMes->sum('monto'), 2) }}</span>
                             @endif
                         </div>
-                        @foreach ($registrosAnterioresMes as $h)
-                            <div class="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-800 pt-2 text-xs">
-                                <span class="text-zinc-300">Registro mensual anterior <span class="text-zinc-500">(sin fecha exacta; no se suma como ingreso nuevo)</span></span>
-                                <span class="font-semibold text-zinc-200">S/ {{ number_format((float) $h->importe, 2) }}</span>
-                            </div>
-                        @endforeach
+
                         @foreach ($ingresosMes as $p)
                             <div class="mt-2 border-t border-zinc-800 pt-2 text-xs">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <span class="font-semibold text-emerald-300">Pago registrado · {{ \Carbon\Carbon::parse($p->fecha_pago)->format('d/m/Y') }}</span>
-                                    <span class="font-bold text-emerald-300">S/ {{ number_format((float) $p->monto, 2) }}</span>
+                                    <span class="font-bold text-emerald-300">S/ {{ number_format((float)$p->monto, 2) }}</span>
                                 </div>
                                 <p class="mt-1 text-zinc-400">{{ strtoupper($p->medio) }} · {{ ucfirst($p->categoria) }}</p>
+
+                                @foreach ($aplicacionesConCargo->get($p->id, collect()) as $aplicacion)
+                                    <p class="mt-1 text-sky-300">
+                                        Aplicado al cargo #{{ $aplicacion->cargo_id }}:
+                                        @if ($aplicacion->periodo || $aplicacion->fecha_vencimiento)
+                                            {{ \Carbon\Carbon::parse($aplicacion->periodo ?: $aplicacion->fecha_vencimiento)->locale('es')->translatedFormat('F Y') }}
+                                        @else
+                                            {{ $aplicacion->descripcion }}
+                                        @endif
+                                        · S/ {{ number_format((float)$aplicacion->monto, 2) }}
+                                    </p>
+                                @endforeach
+
                                 @if ($p->observaciones)
-                                    <p class="mt-1 text-zinc-400">{{ $p->observaciones }}</p>
+                                    <p class="mt-2 border-t border-zinc-800 pt-2 italic text-zinc-400">{{ $p->observaciones }}</p>
                                 @endif
                             </div>
                         @endforeach
-                        @foreach ($asignacionesMes as $a)
-                            <div class="mt-2 border-t border-zinc-800 pt-2 text-xs text-sky-300">
-                                Pago #{{ $a->pago_id }} asignado a este mes: S/ {{ number_format((float) $a->monto, 2) }}
-                                <span class="text-zinc-500">(no es un ingreso adicional)</span>
-                            </div>
-                        @endforeach
-                        @foreach ($pagosAplicadosAlMes as $a)
-                            <div class="mt-2 border-t border-zinc-800 pt-2 text-xs text-sky-300">Pago #{{ $a->pago_id }} aplicado a deuda verificada: S/ {{ number_format((float)$a->monto, 2) }} <span class="text-zinc-500">(no es otro ingreso)</span></div>
-                        @endforeach
-                        {{-- Aplicaciones a facturas: antes se OMITIAN del historial si no habia un reparto adicional. --}}
-                        @foreach ($facturasPagadasMes as $aplicacionFactura)
+
+                        @foreach ($aplicacionesMes as $cargoId => $aplicacionesCargo)
                             @php
-                                $centavosCargo = (int) round((float) $aplicacionFactura->cargo_monto * 100);
-                                $centavosAplicados = (int) round((float) $pagosAplicadosAFacturas
-                                    ->where('cargo_id', $aplicacionFactura->cargo_id)->sum('monto') * 100);
-                                $facturaCubierta = $centavosCargo > 0 && $centavosAplicados >= $centavosCargo;
-                                $mesIngreso = substr((string) $aplicacionFactura->fecha_pago, 0, 7);
+                                $primera = $aplicacionesCargo->first();
+                                $montoAplicado = (float)$todasAplicaciones->where('cargo_id', $cargoId)->sum('monto');
+                                $cubierto = (float)$primera->cargo_monto > 0
+                                    && (int)round($montoAplicado * 100) >= (int)round((float)$primera->cargo_monto * 100);
+                                $idsPagos = $aplicacionesCargo->pluck('pago_id')->unique();
+                                $mensualidad = $primera->cargo_categoria === 'internet';
                             @endphp
+
                             <div class="mt-2 border-t border-zinc-800 pt-2 text-xs">
-                                <div class="flex flex-wrap items-center justify-between gap-2">
-                                    <span class="font-semibold text-sky-300">
-                                        {{ $facturaCubierta ? 'Mensualidad cubierta' : 'Abono a mensualidad' }}
-                                        con pago #{{ $aplicacionFactura->pago_id }}
+                                <div class="flex flex-wrap items-center justify-between gap-2 text-sky-300">
+                                    <span class="font-semibold">
+                                        {{ $mensualidad ? ($cubierto ? 'Mensualidad cubierta' : 'Abono a mensualidad') : ($cubierto ? 'Cargo cubierto' : 'Abono a cargo') }}
+                                        con {{ $idsPagos->count() === 1 ? 'pago' : 'pagos' }} #{{ $idsPagos->implode(', #') }}
                                     </span>
-                                    <span class="font-bold text-sky-300">S/ {{ number_format((float) $aplicacionFactura->monto, 2) }}</span>
+                                    <span class="font-bold">S/ {{ number_format((float)$aplicacionesCargo->sum('monto'), 2) }}</span>
                                 </div>
-                                <p class="mt-1 text-zinc-400">
-                                    Dinero recibido el {{ \Carbon\Carbon::parse($aplicacionFactura->fecha_pago)->format('d/m/Y') }}.
-                                    @if ($mesIngreso !== $mes)
-                                        Adelanto aplicado a {{ \Carbon\Carbon::parse($mes.'-01')->locale('es')->translatedFormat('F Y') }}.
-                                    @endif
-                                    <span class="text-zinc-500">No es otro ingreso de este mes.</span>
-                                </p>
-                                <a href="{{ route('cobranza.distribuir-pago', $aplicacionFactura->pago_id) }}"
-                                   class="mt-1 inline-block text-blue-300 underline underline-offset-2 hover:text-blue-200">Ver pago original #{{ $aplicacionFactura->pago_id }}</a>
+
+                                @foreach ($idsPagos as $idPago)
+                                    <a href="{{ route('cobranza.distribuir-pago', $idPago) }}"
+                                       class="mt-1 mr-3 inline-block text-sky-300 underline underline-offset-2 hover:text-sky-200">Ver pago original #{{ $idPago }}</a>
+                                @endforeach
                             </div>
                         @endforeach
-                        @foreach ($anticiposDelMes as $adelanto)
-                            <div class="mt-2 border-t border-zinc-800 pt-2 text-xs text-sky-300">
-                                Pago #{{ $adelanto->pago_id }} reservado para este mes: S/ {{ number_format((float)$adelanto->monto, 2) }}.
-                                <span class="text-zinc-400">{{ (float)$adelanto->monto_aplicado > 0 ? 'Aplicado al cargo: S/ '.number_format((float)$adelanto->monto_aplicado,2) : 'Esperando mensualidad (no es otro ingreso)' }}</span>
-                                @if ((float)$adelanto->monto_aplicado > 0 && (float)$adelanto->monto_aplicado < (float)$adelanto->monto)
-                                    <span class="text-amber-300">Queda reserva sin aplicar: S/ {{ number_format((float)$adelanto->monto - (float)$adelanto->monto_aplicado, 2) }}; revisar cambio de tarifa.</span>
-                                @endif
-                            </div>
+
+                        @foreach ($repartosMes as $a)
+                            <p class="mt-2 border-t border-zinc-800 pt-2 text-xs text-sky-300">
+                                Pago #{{ $a->pago_id }} asignado a este mes: S/ {{ number_format((float)$a->monto, 2) }}
+                            </p>
                         @endforeach
+
+                        @foreach ($imputacionesMes as $a)
+                            <p class="mt-2 border-t border-zinc-800 pt-2 text-xs text-sky-300">
+                                Pago #{{ $a->pago_id }} aplicado a este mes: S/ {{ number_format((float)$a->monto, 2) }}
+                            </p>
+                        @endforeach
+
+                        @foreach ($reservasMes as $reserva)
+                            <p class="mt-2 border-t border-zinc-800 pt-2 text-xs text-sky-300">
+                                Pago #{{ $reserva->pago_id }} reservado para este mes:
+                                S/ {{ number_format(max(0, (float)$reserva->monto - (float)$reserva->monto_aplicado), 2) }}.
+                                <span class="text-zinc-400">{{ (float)$reserva->monto_aplicado > 0 ? 'Reserva pendiente de aplicar.' : 'Esperando mensualidad.' }}</span>
+                            </p>
+                        @endforeach
+
                         @foreach ($exoneracionesMes as $e)
                             <p class="mt-2 border-t border-zinc-800 pt-2 text-xs text-amber-300">Mes exonerado: {{ $e->motivo }}</p>
                         @endforeach
                     </div>
                 @empty
-                    <p class="py-8 text-center text-sm text-zinc-500">Este cliente aún no tiene historial registrado.</p>
+                    <p class="py-8 text-center text-sm text-zinc-500">Este cliente aún no tiene pagos o asignaciones registrados.</p>
                 @endforelse
+
+                @if ($historicoMensual->isNotEmpty())
+                    <details class="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-3 text-xs text-zinc-400">
+                        <summary class="cursor-pointer font-semibold text-zinc-300">Ver registros anteriores ({{ $historicoMensual->count() }})</summary>
+                        <div class="mt-2 space-y-2">
+                            @foreach ($historicoMensual as $h)
+                                <div class="flex justify-between gap-2 border-t border-zinc-800 pt-2">
+                                    <span>{{ \Carbon\Carbon::parse($h->periodo)->locale('es')->translatedFormat('F Y') }} · Registro histórico</span>
+                                    <span>S/ {{ number_format((float)$h->importe, 2) }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </details>
+                @endif
             </div>
         </section>
         <section class="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
