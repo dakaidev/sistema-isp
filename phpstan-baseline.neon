@@ -1,0 +1,577 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Method App\\Console\\Commands\\Eliminar36ClientesISP\:\:foreignKeys\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/Eliminar36ClientesISP.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\Eliminar36ClientesISP\:\:mostrarPlan\(\) has parameter \$plan with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/Eliminar36ClientesISP.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\Eliminar36ClientesISP\:\:ordenBorrado\(\) has parameter \$fks with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/Eliminar36ClientesISP.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\Eliminar36ClientesISP\:\:ordenBorrado\(\) has parameter \$ids with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/Eliminar36ClientesISP.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\Eliminar36ClientesISP\:\:ordenBorrado\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/Eliminar36ClientesISP.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\Eliminar36ClientesISP\:\:ordenarIds\(\) has parameter \$ids with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/Eliminar36ClientesISP.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\Eliminar36ClientesISP\:\:ordenarIds\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/Eliminar36ClientesISP.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\Eliminar36ClientesISP\:\:prepararPlan\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/Eliminar36ClientesISP.php
+
+		-
+			message: '#^Parameter \#1 \$haystack of function str_contains expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/Eliminar36ClientesISP.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between 36 and 36 will always evaluate to false\.$#'
+			identifier: notIdentical.alwaysFalse
+			count: 1
+			path: app/Console/Commands/Eliminar36ClientesISP.php
+
+		-
+			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(string\|null\)\: mixed\)\|null, ''trim'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/ImportarClientesIsp.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between non\-empty\-list\<string\|null\> and array\{\} will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Console/Commands/ImportarClientesIsp.php
+
+		-
+			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(string\|null\)\: mixed\)\|null, ''trim'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/ImportarMensualidadesISP.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\RecuperarFechasInstalacionExcel\:\:evaluar\(\) has parameter \$filas with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/RecuperarFechasInstalacionExcel.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\RecuperarFechasInstalacionExcel\:\:evaluar\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/RecuperarFechasInstalacionExcel.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\RecuperarFechasInstalacionExcel\:\:informe\(\) has parameter \$registros with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/RecuperarFechasInstalacionExcel.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\RecuperarFechasInstalacionExcel\:\:leerCsv\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/RecuperarFechasInstalacionExcel.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\RecuperarFechasInstalacionExcel\:\:resumir\(\) has parameter \$registros with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/RecuperarFechasInstalacionExcel.php
+
+		-
+			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(string\|null\)\: mixed\)\|null, ''trim'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/RecuperarFechasInstalacionExcel.php
+
+		-
+			message: '#^Parameter \#1 \$haystack of function str_contains expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/RecuperarFechasInstalacionExcel.php
+
+		-
+			message: '#^Parameter \#2 \$user_string of function hash_equals expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/RecuperarFechasInstalacionExcel.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\RecuperarUbicacionesExcel\:\:escribirInforme\(\) has parameter \$registros with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/RecuperarUbicacionesExcel.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\RecuperarUbicacionesExcel\:\:evaluar\(\) has parameter \$filas with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/RecuperarUbicacionesExcel.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\RecuperarUbicacionesExcel\:\:evaluar\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/RecuperarUbicacionesExcel.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\RecuperarUbicacionesExcel\:\:leerCsv\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/RecuperarUbicacionesExcel.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\RecuperarUbicacionesExcel\:\:resumen\(\) has parameter \$estados with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/RecuperarUbicacionesExcel.php
+
+		-
+			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(string\|null\)\: mixed\)\|null, ''trim'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/RecuperarUbicacionesExcel.php
+
+		-
+			message: '#^Parameter \#1 \$haystack of function str_contains expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/RecuperarUbicacionesExcel.php
+
+		-
+			message: '#^Parameter \#2 \$user_string of function hash_equals expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/RecuperarUbicacionesExcel.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 1
+			path: app/Console/Commands/RecuperarUbicacionesExcel.php
+
+		-
+			message: '#^Parameter \#1 \$haystack of function str_contains expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/TrasladarHistorialMensual.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Livewire/Clientes/Gestion.php
+
+		-
+			message: '#^Cannot call method translatedFormat\(\) on Carbon\\CarbonImmutable\|string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Livewire/Clientes/Gestion.php
+
+		-
+			message: '#^Method App\\Livewire\\Clientes\\Gestion\:\:render\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Livewire/Clientes/Gestion.php
+
+		-
+			message: '#^Offset 1 on array\{non\-falsy\-string, non\-empty\-string, non\-empty\-string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Livewire/Clientes/Gestion.php
+
+		-
+			message: '#^Offset 2 on array\{non\-falsy\-string, non\-empty\-string, non\-empty\-string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Livewire/Clientes/Gestion.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>nombre_plan" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Clientes/Gestion.php
+
+		-
+			message: '#^Method App\\Livewire\\Cobranza\\DistribuirPago\:\:render\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Livewire/Cobranza/DistribuirPago.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, stdClass\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Livewire/Cobranza/DistribuirPago.php
+
+		-
+			message: '#^Method App\\Livewire\\Cobranza\\FichaCliente\:\:aplicarPagosPendientes\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Livewire/Cobranza/FichaCliente.php
+
+		-
+			message: '#^Method App\\Livewire\\Cobranza\\FichaCliente\:\:render\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Livewire/Cobranza/FichaCliente.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''tarifa'' and ''pago'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Livewire/Cobranza/FichaCliente.php
+
+		-
+			message: '#^Method App\\Livewire\\Cobranza\\Gestion\:\:aplicarPagosPendientes\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Livewire/Cobranza/Gestion.php
+
+		-
+			message: '#^Method App\\Livewire\\Cobranza\\Gestion\:\:render\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Livewire/Cobranza/Gestion.php
+
+		-
+			message: '#^Method App\\Livewire\\Cobranza\\Gestion\:\:resumen\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Livewire/Cobranza/Gestion.php
+
+		-
+			message: '#^Method App\\Livewire\\Cobranza\\Gestion\:\:resumen\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Livewire/Cobranza/Gestion.php
+
+		-
+			message: '#^Parameter \#2 \$timestamp of function date expects int\|null, int\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Livewire/Cobranza/Gestion.php
+
+		-
+			message: '#^Method App\\Livewire\\Cobranza\\Mensualidades\:\:render\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Livewire/Cobranza/Mensualidades.php
+
+		-
+			message: '#^Method App\\Livewire\\Cobranza\\PagoAdelantado\:\:render\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Livewire/Cobranza/PagoAdelantado.php
+
+		-
+			message: '#^Offset ''monto'' on array\{periodo\: string, monto\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Livewire/Cobranza/PagoAdelantado.php
+
+		-
+			message: '#^Cannot call method translatedFormat\(\) on Carbon\\CarbonImmutable\|string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Livewire/Finanzas/CobrosPorUsuario.php
+
+		-
+			message: '#^Method App\\Livewire\\Finanzas\\CobrosPorUsuario\:\:render\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Livewire/Finanzas/CobrosPorUsuario.php
+
+		-
+			message: '#^Cannot call method translatedFormat\(\) on Carbon\\CarbonImmutable\|string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Livewire/Finanzas/Resumen.php
+
+		-
+			message: '#^Method App\\Livewire\\Finanzas\\Resumen\:\:render\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Livewire/Finanzas/Resumen.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$estado\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Nap/Gestion.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$observaciones\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Nap/Gestion.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$servicio_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Nap/Gestion.php
+
+		-
+			message: '#^Method App\\Livewire\\Nap\\Gestion\:\:coordenadas\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Livewire/Nap/Gestion.php
+
+		-
+			message: '#^Method App\\Livewire\\Nap\\Gestion\:\:render\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Livewire/Nap/Gestion.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$codigo\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Servicios/Gestion.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$nombre\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Servicios/Gestion.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Livewire/Servicios/Gestion.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Livewire/Servicios/Gestion.php
+
+		-
+			message: '#^Method App\\Livewire\\Servicios\\Gestion\:\:render\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Livewire/Servicios/Gestion.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>codigo" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Servicios/Gestion.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>nombre" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Servicios/Gestion.php
+
+		-
+			message: '#^Method App\\Livewire\\Usuarios\\Gestion\:\:render\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Livewire/Usuarios/Gestion.php
+
+		-
+			message: '#^Method App\\Models\\CajaNap\:\:movimientos\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/CajaNap.php
+
+		-
+			message: '#^Method App\\Models\\CajaNap\:\:puertos\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/CajaNap.php
+
+		-
+			message: '#^Method App\\Models\\Cliente\:\:servicios\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Cliente.php
+
+		-
+			message: '#^Method App\\Models\\MovimientoNap\:\:caja\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/MovimientoNap.php
+
+		-
+			message: '#^Method App\\Models\\PuertoNap\:\:caja\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/PuertoNap.php
+
+		-
+			message: '#^Method App\\Models\\PuertoNap\:\:servicio\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/PuertoNap.php
+
+		-
+			message: '#^Method App\\Models\\Servicio\:\:cliente\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Servicio.php
+
+		-
+			message: '#^Method App\\Models\\Tarifa\:\:servicio\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Tarifa.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$inicio_cobro\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Cobranza/GeneradorMensualidades.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$tarifa_mensual\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Cobranza/GeneradorMensualidades.php
+
+		-
+			message: '#^Cannot call method translatedFormat\(\) on Carbon\\CarbonImmutable\|string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Cobranza/GeneradorMensualidades.php
+
+		-
+			message: '#^Method App\\Services\\Cobranza\\GeneradorMensualidades\:\:aplicarCreditoInternet\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Services/Cobranza/GeneradorMensualidades.php
+
+		-
+			message: '#^Method App\\Services\\Cobranza\\GeneradorMensualidades\:\:ejecutar\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Cobranza/GeneradorMensualidades.php
+
+		-
+			message: '#^Method App\\Services\\Cobranza\\GeneradorMensualidades\:\:generarCargoParaCliente\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Cobranza/GeneradorMensualidades.php
+
+		-
+			message: '#^Method App\\Services\\Cobranza\\GeneradorMensualidades\:\:generarMesActualParaCliente\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Cobranza/GeneradorMensualidades.php
+
+		-
+			message: '#^Method App\\Support\\IspAccess\:\:roles\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/IspAccess.php
+
+		-
+			message: '#^Method App\\Support\\ResumenFichaCliente\:\:obtener\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/ResumenFichaCliente.php
+
+		-
+			message: '#^Method App\\Support\\ResumenIngresosMensuales\:\:calcular\(\) has parameter \$historicos with no value type specified in iterable type iterable\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/ResumenIngresosMensuales.php
+
+		-
+			message: '#^Method App\\Support\\ResumenIngresosMensuales\:\:calcular\(\) has parameter \$pagos with no value type specified in iterable type iterable\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/ResumenIngresosMensuales.php
+
+		-
+			message: '#^Method App\\Support\\ResumenIngresosMensuales\:\:calcular\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/ResumenIngresosMensuales.php
+
+		-
+			message: '#^Offset ''anterior'' might not exist on array\{periodo\: string, cliente_id\: int, codigo\: string, nombre\: string, anterior\: int, internet\: int, otros\: int\}\|non\-empty\-array\{anterior\?\: int, internet\?\: int, otros\?\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 4
+			path: app/Support/ResumenIngresosMensuales.php
+
+		-
+			message: '#^Offset ''codigo'' might not exist on array\{periodo\: string, cliente_id\: int, codigo\: string, nombre\: string, anterior\: int, internet\: int, otros\: int\}\|non\-empty\-array\{anterior\?\: int, internet\?\: int, otros\?\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 2
+			path: app/Support/ResumenIngresosMensuales.php
+
+		-
+			message: '#^Offset ''internet'' might not exist on array\{anterior\: int\<1, max\>, internet\?\: int, otros\?\: int\}\|array\{periodo\: string, cliente_id\: int, codigo\: string, nombre\: string, anterior\: int\<1, max\>, internet\: int, otros\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 2
+			path: app/Support/ResumenIngresosMensuales.php
+
+		-
+			message: '#^Offset ''internet'' might not exist on array\{periodo\: string, cliente_id\: int, codigo\: string, nombre\: string, anterior\: int, internet\: int, otros\: int\}\|non\-empty\-array\{anterior\?\: int, internet\?\: int, otros\?\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 2
+			path: app/Support/ResumenIngresosMensuales.php
+
+		-
+			message: '#^Offset ''internet''\|''otros'' might not exist on array\{periodo\: string, cliente_id\: int, codigo\: string, nombre\: string, anterior\: int, internet\: int, otros\: int\}\|non\-empty\-array\{anterior\?\: int, internet\?\: int, otros\?\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Support/ResumenIngresosMensuales.php
+
+		-
+			message: '#^Offset ''nombre'' might not exist on array\{periodo\: string, cliente_id\: int, codigo\: string, nombre\: string, anterior\: int, internet\: int, otros\: int\}\|non\-empty\-array\{anterior\?\: int, internet\?\: int, otros\?\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Support/ResumenIngresosMensuales.php
+
+		-
+			message: '#^Offset ''otros'' might not exist on array\{anterior\: int\<1, max\>, internet\: int\<min, 0\>, otros\?\: int\}\|array\{periodo\: string, cliente_id\: int, codigo\: string, nombre\: string, anterior\: int\<1, max\>, internet\: int\<min, 0\>, otros\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Support/ResumenIngresosMensuales.php
+
+		-
+			message: '#^Offset ''otros'' might not exist on array\{periodo\: string, cliente_id\: int, codigo\: string, nombre\: string, anterior\: int, internet\: int, otros\: int\}\|non\-empty\-array\{anterior\?\: int, internet\?\: int, otros\?\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Support/ResumenIngresosMensuales.php
+
+		-
+			message: '#^Offset ''periodo'' might not exist on array\{periodo\: string, cliente_id\: int, codigo\: string, nombre\: string, anterior\: int, internet\: int, otros\: int\}\|non\-empty\-array\{anterior\?\: int, internet\?\: int, otros\?\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 2
+			path: app/Support/ResumenIngresosMensuales.php
