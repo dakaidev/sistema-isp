@@ -1,0 +1,134 @@
+name: "ULTRA - Despliegue automatico"
+
+on:
+  workflow_run:
+    workflows: ["tests"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ultra-produccion
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    name: "Publicar ULTRA en DigitalOcean"
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: "Publicar solo la ultima version aprobada"
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          main_sha="$(gh api "repos/${GITHUB_REPOSITORY}/commits/main" --jq .sha)"
+          if [[ "$main_sha" != "$DEPLOY_SHA" ]]; then
+            echo "La rama main ya avanzo; este despliegue anterior se omite."
+            echo "publicar=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publicar=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: "Descargar version probada"
+        if: steps.version.outputs.publicar == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: "Preparar Node"
+        if: steps.version.outputs.publicar == 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: "Compilar los estilos y JavaScript"
+        if: steps.version.outputs.publicar == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run build
+          test -f public/build/manifest.json
+          tar -czf /tmp/ultra-build.tar.gz -C public build
+
+      - name: "Preparar SSH con huella verificada"
+        if: steps.version.outputs.publicar == 'true'
+        env:
+          ULTRA_KEY: ${{ secrets.ULTRA_SSH_PRIVATE_KEY }}
+          ULTRA_KNOWN_HOSTS: ${{ secrets.ULTRA_SSH_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$ULTRA_KEY" || -z "$ULTRA_KNOWN_HOSTS" ]]; then
+            echo "Faltan secretos SSH de ULTRA" >&2
+            exit 1
+          fi
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$ULTRA_KEY" > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$ULTRA_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: "Enviar archivos compilados"
+        if: steps.version.outputs.publicar == 'true'
+        env:
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          scp -i "$HOME/.ssh/id_ed25519" \
+            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            /tmp/ultra-build.tar.gz \
+            "deploy@104.236.37.65:/tmp/ultra-build-${DEPLOY_SHA}.tar.gz"
+
+      - name: "Actualizar Laravel sin tocar MySQL ni .env"
+        if: steps.version.outputs.publicar == 'true'
+        env:
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -T -i "$HOME/.ssh/id_ed25519" \
+            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            deploy@104.236.37.65 bash -se -- "$DEPLOY_SHA" <<'REMOTO'
+          set -euo pipefail
+          sha="$1"
+          cd /var/www/ultra
+          test -r .env
+          test -f composer.lock
+          git diff --quiet
+          git diff --cached --quiet
+          git fetch origin main
+          if [[ "$(git rev-parse origin/main)" != "$sha" ]]; then
+            echo "main cambio durante el despliegue. Se cancela." >&2
+            exit 1
+          fi
+          git merge --ff-only "$sha"
+          composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+          tar -xzf "/tmp/ultra-build-${sha}.tar.gz" -C public
+          rm -f "/tmp/ultra-build-${sha}.tar.gz"
+          php artisan view:cache
+          echo "ULTRA_DESPLEGADO_OK $(git rev-parse --short HEAD)"
+          REMOTO
+
+      - name: "Comprobar pagina de acceso HTTPS"
+        if: steps.version.outputs.publicar == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --max-time 25 \
+            -o /dev/null -w 'ULTRA_LOGIN_HTTP=%{http_code}\n' \
+            https://104.236.37.65/login
