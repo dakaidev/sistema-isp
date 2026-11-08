@@ -49,7 +49,7 @@ class ServicioTarifaTest extends TestCase
     public function test_registra_tarifa_inicial_automaticamente(): void
     {
         // Crear administrador ficticio.
-        $usuario = User::factory()->create();
+        $usuario = User::factory()->create(['rol' => 'admin', 'activo' => true]);
 
         // Crear cliente ficticio.
         $cliente = Cliente::create([
