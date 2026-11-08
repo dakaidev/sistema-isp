@@ -4,6 +4,7 @@ namespace App\Livewire\Cobranza;
 
 use App\Models\Cliente;
 use App\Support\IspAccess;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -243,21 +244,6 @@ class FichaCliente extends Component
         }
     }
 
-    public function updatedMesPago(): void
-    {
-        if ($this->formulario === 'pago') {
-            $this->destinoPago = '';
-        }
-    }
-
-    public function updatedFechaPago(string $fecha): void
-    {
-        if ($this->formulario === 'pago' && preg_match('/^\d{4}-\d{2}-\d{2}$/D', $fecha)) {
-            $this->mesPago = substr($fecha, 0, 7);
-            $this->destinoPago = '';
-        }
-    }
-
     /** Registra dinero recibido y su destino en UNA transaccion; jamas aplica FIFO. */
     public function guardarPago(): void
     {
@@ -269,20 +255,18 @@ class FichaCliente extends Component
         $datos = $this->validate([
             'importe' => ['required', 'numeric', 'decimal:0,2', 'between:0.01,99999999.99'],
             'fechaPago' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.today('America/Lima')->toDateString()],
-            'mesPago' => ['required', 'date_format:Y-m'],
+            'mesPago' => ['nullable', 'date_format:Y-m'],
             'medio' => ['required', 'in:efectivo,yape,plin,transferencia,otro'],
             'categoria' => ['required', 'in:internet,equipo,otros'],
             'destinoPago' => ['required', 'string', 'max:100'],
             'referenciaPago' => ['nullable', 'string', 'max:100'],
             'observaciones' => ['nullable', 'string', 'max:1000'],
         ]);
-        $mes = $datos['mesPago'].'-01';
-        if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])-01$/D', $mes)) {
-            throw ValidationException::withMessages(['mesPago' => 'Selecciona un mes válido.']);
-        }
+        // ULTRA_PERIODO_POR_CARGO_V1: la fecha del cobro no define el mes pagado.
         $centavos = $this->centavos($datos['importe']);
         $destino = $datos['destinoPago'];
-        DB::transaction(function () use ($datos, $mes, $centavos, $destino) {
+        DB::transaction(function () use ($datos, $centavos, $destino) {
+            $mes = null;
             Cliente::whereKey($this->clienteId)->lockForUpdate()->firstOrFail();
             $cargo = null;
             if (preg_match('/^cargo:([1-9]\d*)$/D', $destino, $m)) {
@@ -293,8 +277,21 @@ class FichaCliente extends Component
                     throw ValidationException::withMessages(['destinoPago' => 'La deuda no existe o pertenece a otra categoría.']);
                 }
                 $periodoGenerado = DB::table('isp_mensualidades_generadas')->where('cargo_id', $cargo->id)->first();
-                if ($periodoGenerado && substr((string) $periodoGenerado->periodo, 0, 7) !== $datos['mesPago']) {
-                    throw ValidationException::withMessages(['mesPago' => 'El mes indicado no coincide con la mensualidad seleccionada.']);
+                if ($datos['categoria'] === 'internet') {
+                    if ($periodoGenerado) {
+                        // La factura automatica tiene un periodo oficial independiente del cobro.
+                        $periodoFuente = (string) $periodoGenerado->periodo;
+                        if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/D', substr($periodoFuente, 0, 10))) {
+                            throw ValidationException::withMessages(['destinoPago' => 'Esta factura no tiene un mes de servicio valido. Revisala antes de cobrar.']);
+                        }
+                        $mes = substr($periodoFuente, 0, 7).'-01';
+                    } else {
+                        // ULTRA_MES_MANUAL_CLARO_V1: un vencimiento no prueba el mes del servicio.
+                        $mes = $this->mesCargoManualInternet(
+                            (string) $cargo->descripcion,
+                            $cargo->fecha_vencimiento !== null ? (string) $cargo->fecha_vencimiento : null
+                        );
+                    }
                 }
                 $yaAplicado = $this->centavos(DB::table('isp_aplicaciones_pago')
                     ->where('cargo_id', $cargo->id)->sum('monto'));
@@ -308,6 +305,10 @@ class FichaCliente extends Component
                 if ($datos['categoria'] !== 'internet') {
                     throw ValidationException::withMessages(['destinoPago' => 'El router/equipo necesita una deuda registrada para aplicar el pago.']);
                 }
+                if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])$/D', (string) ($datos['mesPago'] ?? ''))) {
+                    throw ValidationException::withMessages(['mesPago' => 'Selecciona el mes histórico que corresponde al pago.']);
+                }
+                $mes = $datos['mesPago'].'-01';
                 if ($mes >= today('America/Lima')->startOfMonth()->toDateString()) {
                     throw ValidationException::withMessages(['mesPago' => 'Para el mes actual o futuro crea o selecciona primero su mensualidad.']);
                 }
@@ -316,6 +317,19 @@ class FichaCliente extends Component
                 if ($existeFacturado) {
                     throw ValidationException::withMessages(['destinoPago' => 'Este mes tiene una factura. Selecciona el cargo correspondiente.']);
                 }
+                // Evita registrar un historico si ya hay un cargo de ese mismo mes.
+                $cargosDelMes = DB::table('isp_cargos')
+                    ->where('cliente_id', $this->clienteId)
+                    ->where('categoria', 'internet')
+                    ->where('fecha_vencimiento', '>=', $mes)
+                    ->where('fecha_vencimiento', '<', Carbon::parse($mes)->addMonth()->toDateString())
+                    ->get(['id', 'monto']);
+                foreach ($cargosDelMes as $cargoDelMes) {
+                    throw ValidationException::withMessages([
+                        'destinoPago' => 'Este mes ya tiene un cargo registrado: utiliza el historial o el cargo existente; no crees un segundo pago histórico.',
+                    ]);
+                }
+
                 // Si existe una deuda anterior confirmada, debe tener prioridad frente a anotaciones sin cargo.
                 $pendienteVerificado = DB::table('isp_cargos')->where('cliente_id', $this->clienteId)
                     ->where('categoria', 'internet')->where('tipo', 'saldo_excel_verificado')->get();
@@ -347,7 +361,7 @@ class FichaCliente extends Component
                     'monto' => $this->dinero($centavos), 'created_at' => now(), 'updated_at' => now(),
                 ]);
                 if (! DB::table('isp_mensualidades_generadas')->where('cargo_id', $cargo->id)->exists()
-                    && $datos['categoria'] === 'internet') {
+                    && $datos['categoria'] === 'internet' && $mes !== null) {
                     DB::table('isp_imputaciones_pagos_meses')->insert([
                         'cliente_id' => $this->clienteId, 'pago_id' => $pagoId,
                         'cargo_id' => $cargo->id, 'periodo' => $mes,
@@ -410,6 +424,53 @@ class FichaCliente extends Component
         }
     }
 
+    /** Mes del servicio SOLO para cargos manuales inequívocos; null en los demás casos. */
+    private function mesCargoManualInternet(string $descripcion, ?string $fechaVencimiento): ?string
+    {
+        if ($fechaVencimiento === null || ! preg_match('/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/D', $fechaVencimiento)) {
+            return null;
+        }
+
+        // "Debe muchos meses menos mayo" NO significa que deba mayo ni octubre.
+        if (preg_match('/\b(?:meses|mese|varios?|muchos?|menos|excepto|salvo|acumulados?|acumuladas?|anteriores?|sin)\b/iu', $descripcion)) {
+            return null;
+        }
+
+        $patron = '/\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|settiembre|octubre|noviembre|diciembre)\b/iu';
+        if (preg_match_all($patron, $descripcion, $coincidencias) !== 1) {
+            return null;
+        }
+
+        $numero = match (mb_strtolower($coincidencias[1][0], 'UTF-8')) {
+            'enero' => 1,
+            'febrero' => 2,
+            'marzo' => 3,
+            'abril' => 4,
+            'mayo' => 5,
+            'junio' => 6,
+            'julio' => 7,
+            'agosto' => 8,
+            'septiembre', 'setiembre', 'settiembre' => 9,
+            'octubre' => 10,
+            'noviembre' => 11,
+            'diciembre' => 12,
+            default => null,
+        };
+
+        if ($numero === null || $numero !== (int) substr($fechaVencimiento, 5, 2)) {
+            return null;
+        }
+
+        preg_match_all('/\b(?:19|20)\d{2}\b/u', $descripcion, $anios);
+        foreach ($anios[0] as $anio) {
+            if ($anio !== substr($fechaVencimiento, 0, 4)) {
+                return null;
+            }
+        }
+
+        return substr($fechaVencimiento, 0, 7).'-01';
+    }
+
     private function centavos(string|int|float $monto): int
     {
         return (int) round((float) $monto * 100);
@@ -461,7 +522,6 @@ class FichaCliente extends Component
             }
             $cargosConSaldo[] = ['cargo' => $cargo, 'pendiente' => $restante / 100];
         }
-        $mesSeleccionado = $this->mesPago;
         $mesesGenerados = DB::table('isp_mensualidades_generadas')
             ->where('cliente_id', $this->clienteId)->get()->keyBy('cargo_id');
         $opcionesPago = [];
@@ -472,20 +532,28 @@ class FichaCliente extends Component
                     continue;
                 }
                 $mensualidad = $mesesGenerados->get($cargo->id);
-                if ($mensualidad && substr((string) $mensualidad->periodo, 0, 7) !== $mesSeleccionado) {
-                    continue;
+                if ($mensualidad) {
+                    $label = 'Internet '.substr((string) $mensualidad->periodo, 0, 7);
+                } else {
+                    $label = (string) $cargo->descripcion;
+                    if ($cargo->categoria === 'internet') {
+                        $mesManual = $this->mesCargoManualInternet(
+                            $label,
+                            $cargo->fecha_vencimiento !== null ? (string) $cargo->fecha_vencimiento : null
+                        );
+                        $label .= $mesManual
+                            ? ' ('.substr($mesManual, 0, 7).')'
+                            : ' (deuda manual: mes no identificado)';
+                    }
                 }
-                $label = $mensualidad ? 'Internet '.substr((string) $mensualidad->periodo, 0, 7) : $cargo->descripcion;
                 $opcionesPago[] = ['valor' => 'cargo:'.$cargo->id,
                     'texto' => $label.' — pendiente S/ '.number_format($item['pendiente'], 2)];
             }
-            if ($this->categoria === 'internet' && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/D', $mesSeleccionado)) {
-                $mes = $mesSeleccionado.'-01';
-                $existe = $mesesGenerados->contains(fn ($m) => substr((string) $m->periodo, 0, 7) === $mesSeleccionado);
-                if (! $existe && $mes < today('America/Lima')->startOfMonth()->toDateString()) {
-                    $opcionesPago[] = ['valor' => 'historial',
-                        'texto' => 'Mes '.$mesSeleccionado.' sin factura (solo historial; no baja deudas verificadas)'];
-                }
+            if ($this->categoria === 'internet') {
+                $opcionesPago[] = [
+                    'valor' => 'historial',
+                    'texto' => 'Registrar mes histórico anterior sin factura (caso especial)',
+                ];
             }
         }
         $pagado = 0;

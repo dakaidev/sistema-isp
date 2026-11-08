@@ -132,29 +132,28 @@
                             </select>
                             @error('categoria') <span class="mt-1 block text-red-400">{{ $message }}</span> @enderror
                         </label>
-                        <div class="grid gap-4 sm:grid-cols-2">
-                            @if ($categoria === 'internet')
-                                <label class="block text-sm">Mes del servicio de internet
-                                    <input type="month" required wire:model.live="mesPago" class="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white">
-                                    @error('mesPago') <span class="mt-1 block text-red-400">{{ $message }}</span> @enderror
-                                </label>
-                            @else
-                                <div class="rounded-xl border border-zinc-700 p-3 text-xs text-zinc-300">Para equipo/router selecciona la deuda del equipo. El mes de ingreso se obtiene de la fecha real del pago.</div>
-                            @endif
+                        <div class="space-y-4">
                             <label class="block text-sm">Deuda a cancelar / destino del dinero
-                                <select required wire:key="destino-{{ $categoria }}-{{ $mesPago }}" wire:model="destinoPago" class="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white">
+                                <select required wire:key="destino-{{ $categoria }}" wire:model.live="destinoPago" class="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white">
                                     <option value="">Selecciona a qué se aplica</option>
                                     @foreach ($opcionesPago as $opcion)
-                                        <option value="{{ $opcion['valor'] }}">{{ $opcion['texto'] }}</option>
+                                        <option value="{{ $opcion['valor'] }}">{{ preg_replace_callback('/\b\d{4}-(?:0[1-9]|1[0-2])\b/', fn ($m) => ucfirst(\Carbon\Carbon::parse($m[0].'-01')->locale('es')->translatedFormat('F Y')), $opcion['texto']) }}</option>
                                     @endforeach
                                 </select>
                                 @error('destinoPago') <span class="mt-1 block text-red-400">{{ $message }}</span> @enderror
                             </label>
+                            @if ($categoria === 'internet' && $destinoPago === 'historial')
+                                <label class="block text-sm">Mes histórico del servicio (sin factura)
+                                    <input type="month" required wire:model="mesPago" class="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white">
+                                    @error('mesPago') <span class="mt-1 block text-red-400">{{ $message }}</span> @enderror
+                                </label>
+                                <p class="text-xs text-amber-200">Solo para meses anteriores sin factura ni cargo registrado para ese mes. Este registro no descuenta deudas existentes.</p>
+                            @endif
                         </div>
                         @if ($categoria === 'equipo' && count($opcionesPago) === 0)
                             <p class="rounded-lg border border-amber-500/40 bg-amber-950/30 p-3 text-xs text-amber-200">No hay deuda de equipo registrada. Antes de recibir un nuevo pago del router, crea/verifica el cargo de equipo en Cobranza. Si el dinero YA fue ingresado, no lo registres otra vez.</p>
                         @endif
-                        <p class="text-xs text-blue-200">La fecha determina el mes de INGRESO en Finanzas. La deuda y el mes seleccionados indican qué queda pagado; son datos diferentes.</p>
+                        <p class="text-xs text-blue-200">La fecha indica cuándo ingresó el dinero; la deuda seleccionada determina qué cargo queda pagado.</p>
                         <div class="grid gap-4 sm:grid-cols-2">
                             <label class="block text-sm">Referencia / número de operación (opcional)
                                 <input type="text" maxlength="100" wire:model="referenciaPago" class="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white">
