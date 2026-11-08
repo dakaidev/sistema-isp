@@ -30,9 +30,9 @@ Route::view('/servicios', 'servicios.index')
     ->name('servicios.index');
 
 Route::view('/clientes/nuevo', 'clientes.index')
-        ->middleware(['auth', 'verified'])
-        ->middleware(EnsureIspPermission::class.':clientes.edit')
-        ->name('clientes.nuevo');
+    ->middleware(['auth', 'verified'])
+    ->middleware(EnsureIspPermission::class.':clientes.edit')
+    ->name('clientes.nuevo');
 
 Route::view('/clientes/{cliente}/editar', 'clientes.index')
     ->middleware(['auth', 'verified'])

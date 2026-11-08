@@ -225,7 +225,7 @@ class RecuperarFechasInstalacionExcel extends Command
         } finally {
             fclose($f);
         }
-        if (! str_contains($cab,'MySQL dump') || ! str_contains($pie,'-- Dump completed on')) {
+        if (! str_contains($cab, 'MySQL dump') || ! str_contains($pie, '-- Dump completed on')) {
             throw new RuntimeException('Respaldo incompleto.');
         }
         $this->info('OK: respaldo SQL reciente y completo verificado.');

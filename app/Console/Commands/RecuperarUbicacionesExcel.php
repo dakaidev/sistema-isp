@@ -253,7 +253,7 @@ class RecuperarUbicacionesExcel extends Command
         } finally {
             fclose($f);
         }
-        if (! str_contains($cab, 'MySQL dump') || ! str_contains($pie,'-- Dump completed on')) {
+        if (! str_contains($cab, 'MySQL dump') || ! str_contains($pie, '-- Dump completed on')) {
             throw new RuntimeException('El respaldo SQL no tiene encabezado y cierre válidos de mysqldump.');
         }
         $this->info('OK: respaldo SQL completo, reciente y fuera del proyecto.');

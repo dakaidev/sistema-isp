@@ -50,7 +50,7 @@ class GeneradorMensualidades
                         $resumen['nuevos']++;
                         $totalCentavos += $resultado['centavos'];
                     } else {
-                        ++$resumen['existentes'];
+                        $resumen['existentes']++;
                     }
                 }
             });
